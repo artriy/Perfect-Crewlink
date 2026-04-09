@@ -14,7 +14,7 @@
   <img src="https://img.shields.io/badge/Desktop-Tauri-24C8DB?logo=tauri&logoColor=white" alt="Tauri desktop shell">
   <img src="https://img.shields.io/badge/Native-Rust-000000?logo=rust&logoColor=white" alt="Rust native layer">
   <img src="https://img.shields.io/badge/Windows-Portable%20%2B%20Installer-0078D4?logo=windows11&logoColor=white" alt="Windows packages">
-  <img src="https://img.shields.io/badge/Linux-AppImage-FCC624?logo=linux&logoColor=black" alt="Linux AppImage">
+  <img src="https://img.shields.io/badge/Linux-Supported%20via%20Source%20Build-FCC624?logo=linux&logoColor=black" alt="Linux source-build support">
 </p>
 
 Perfect Crewlink is a full desktop fork of the BetterCrewLink lineage, rebuilt around
@@ -51,7 +51,7 @@ window handling, cleaner overlays, stronger mod support, and better day-to-day q
 | Mod support | AleLudu compatibility, expanded palette sync for modded colors, and cleaner overlay placement for large/modded meetings |
 | Voice | Better BetterCrewLink interop, more reliable peer negotiation, and persistent mute/deafen preferences |
 | Customization | Overlay visibility modes, always-show-talking-player mode, compact/background variants, privacy toggles, and advanced audio/server settings |
-| Packaging | Windows portable exe, Windows installer, and Linux AppImage releases |
+| Packaging | Windows portable exe and Windows installer releases, with Linux supported through source builds |
 
 ## What Ships In v1.0.0
 
@@ -84,7 +84,8 @@ Release assets include:
 
 - `perfectcrewlink.exe`
 - `Perfect.Crewlink_1.0.0_x64-setup.exe`
-- `Perfect.Crewlink_1.0.0_amd64.AppImage`
+
+Linux is supported, but `v1.0.0` ships GitHub release assets for Windows only. Linux builds are expected to come from source on a Linux machine.
 
 ## Build From Source
 
@@ -93,7 +94,7 @@ Release assets include:
 - Node.js 20+
 - Rust stable toolchain
 - Windows 10 or 11 with Visual Studio 2022 Build Tools and WebView2 Runtime
-- Or Ubuntu 22.04+ with GTK/WebKitGTK dependencies for Tauri AppImage builds
+- Or Ubuntu 22.04+ with GTK/WebKitGTK dependencies for Tauri desktop builds
 
 ### Development
 
@@ -115,7 +116,33 @@ Typical outputs:
 
 - `src-tauri/target/release/perfectcrewlink.exe`
 - `src-tauri/target/release/bundle/nsis/Perfect Crewlink_1.0.0_x64-setup.exe`
-- `src-tauri/target/release/bundle/appimage/*.AppImage`
+
+### Linux build guide
+
+Perfect Crewlink supports Linux builds, but the first release publishes Windows assets only. To build on Linux:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y \
+  build-essential \
+  curl \
+  file \
+  libssl-dev \
+  libgtk-3-dev \
+  libwebkit2gtk-4.1-dev \
+  libayatana-appindicator3-dev \
+  librsvg2-dev \
+  libxdo-dev \
+  patchelf
+
+git clone https://github.com/artriy/Perfect-Crewlink.git
+cd Perfect-Crewlink
+npm ci
+npm run typecheck
+npm run tauri -- build
+```
+
+On Linux, Tauri will produce the appropriate native bundle outputs for the host environment.
 
 ## Development Guide
 
@@ -149,14 +176,12 @@ npm run tauri -- build
 
 ## Release Workflow
 
-GitHub Actions builds release assets for:
+GitHub Actions builds and attaches Windows release assets directly to the GitHub release tag:
 
 - Windows portable executable
 - Windows NSIS installer
-- Linux AppImage
 
-The release workflow attaches assets directly to the GitHub release tag so the repo is ready to
-clone, build, and publish without extra local packaging steps.
+Linux remains supported through documented source builds.
 
 ## Changelog
 
