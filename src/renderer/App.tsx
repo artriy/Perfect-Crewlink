@@ -397,7 +397,7 @@ export default function App(): JSX.Element {
 										</DialogContent>
 										{updaterState.state === 'error' && (
 											<DialogActions>
-												<Button color="grey" onClick={() => bridge.openExternal('https://github.com/LoMce/Perfect-Crewlink/releases/latest')}>
+												<Button color="grey" onClick={() => bridge.openExternal('https://github.com/artriy/Perfect-Crewlink/releases/latest')}>
 													Download Manually
 												</Button>
 												<Button color="grey" onClick={() => setDiaOpen(false)}>
