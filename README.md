@@ -81,37 +81,47 @@ Windows downloads include a portable desktop build and an installer. Linux is su
 
 ## Build From Source
 
-### Prerequisites
+If you just want to use the app, download a release build. If you want to run or build it yourself, use the platform guide below.
 
-- Node.js 20+
-- Rust stable toolchain
-- Windows 10 or 11 with Visual Studio 2022 Build Tools and WebView2 Runtime
-- Or Ubuntu 22.04+ with GTK/WebKitGTK dependencies for Tauri desktop builds
+### Windows quick start
 
-### Development
+1. Install the required tools:
+   - Node.js 20 or newer
+   - Rust stable toolchain from `rustup`
+   - Visual Studio 2022 Build Tools with `Desktop development with C++`
+   - Microsoft WebView2 Runtime
+2. Clone the repo and install dependencies:
 
 ```bash
 git clone https://github.com/artriy/Perfect-Crewlink.git
 cd Perfect-Crewlink
 npm ci
+```
+
+3. Start the desktop app in development mode:
+
+```bash
 npm run tauri -- dev
 ```
 
-### Production build
+4. Build a production version:
 
 ```bash
 npm run typecheck
 npm run tauri -- build
 ```
 
-Typical outputs:
+5. Find the Windows outputs here:
+   - `src-tauri/target/release/perfectcrewlink.exe`
+   - `src-tauri/target/release/bundle/nsis/*.exe`
 
-- `src-tauri/target/release/perfectcrewlink.exe`
-- `src-tauri/target/release/bundle/nsis/*.exe`
+### Linux quick start
 
-### Linux build guide
-
-Perfect Crewlink supports Linux builds. To build on Linux:
+1. Install the required tools:
+   - Node.js 20 or newer
+   - Rust stable toolchain from `rustup`
+   - Ubuntu 22.04 or newer
+2. Install Tauri desktop dependencies:
 
 ```bash
 sudo apt-get update
@@ -126,15 +136,30 @@ sudo apt-get install -y \
   librsvg2-dev \
   libxdo-dev \
   patchelf
+```
 
+3. Clone the repo and install dependencies:
+
+```bash
 git clone https://github.com/artriy/Perfect-Crewlink.git
 cd Perfect-Crewlink
 npm ci
+```
+
+4. Start the desktop app in development mode:
+
+```bash
+npm run tauri -- dev
+```
+
+5. Build a production version:
+
+```bash
 npm run typecheck
 npm run tauri -- build
 ```
 
-On Linux, Tauri will produce the appropriate native bundle outputs for the host environment.
+6. Tauri will generate the Linux bundle for the host machine from `src-tauri/target/release/bundle/`.
 
 ## Development Guide
 
