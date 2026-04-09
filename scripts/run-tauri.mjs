@@ -15,8 +15,18 @@ function cargoAvailable(env) {
 function buildEnv() {
 	const env = { ...process.env };
 	const currentPath = env.Path ?? env.PATH ?? '';
-	env.Path = currentPath;
-	env.PATH = currentPath;
+	const nodeBin = path.dirname(process.execPath);
+	const nextPath = currentPath
+		.split(path.delimiter)
+		.filter(Boolean);
+
+	if (!nextPath.includes(nodeBin)) {
+		nextPath.unshift(nodeBin);
+	}
+
+	const normalizedPath = nextPath.join(path.delimiter);
+	env.Path = normalizedPath;
+	env.PATH = normalizedPath;
 	if (cargoAvailable(env)) {
 		return env;
 	}
@@ -33,9 +43,9 @@ function buildEnv() {
 			continue;
 		}
 
-		const nextPath = `${binDir}${path.delimiter}${currentPath}`;
-		env.Path = nextPath;
-		env.PATH = nextPath;
+		const cargoPath = `${binDir}${path.delimiter}${normalizedPath}`;
+		env.Path = cargoPath;
+		env.PATH = cargoPath;
 		break;
 	}
 

@@ -4,8 +4,8 @@
   "version": "3.1.4",
   "identifier": "net.ottomated.crewlink.beta",
   "build": {
-    "beforeDevCommand": ".\\scripts\\vite-dev.cmd",
-    "beforeBuildCommand": ".\\scripts\\vite-build.cmd",
+    "beforeDevCommand": "npm run dev:web",
+    "beforeBuildCommand": "npm run build",
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173"
   },
