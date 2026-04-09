@@ -1,8 +1,8 @@
 import Ajv from 'ajv';
 
 export const validateClientPeerConfig = new Ajv({
-	format: 'full',
 	allErrors: true,
+	strict: false,
 }).compile({
 	type: 'object',
 	properties: {

@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import { ThemeProvider, Theme, StyledEngineProvider } from '@mui/material/styles';
 import makeStyles from '@mui/styles/makeStyles';
+import { ThemeProvider as LegacyThemeProvider } from '@mui/styles';
 import RefreshSharpIcon from '@mui/icons-material/RefreshSharp';
 import CloseIcon from '@mui/icons-material/Close';
 import MinimizeIcon from '@mui/icons-material/Minimize';
@@ -12,8 +13,8 @@ import 'typeface-varela/index.css';
 import '../language/i18n';
 import theme from '../theme';
 import LobbyBrowser from './LobbyBrowser';
-import { withNamespaces } from 'react-i18next';
-import { ipcRenderer } from 'electron';
+import { useTranslation } from 'react-i18next';
+import { bridge } from '../bridge';
 
 
 declare module '@mui/styles/defaultTheme' {
@@ -23,6 +24,12 @@ declare module '@mui/styles/defaultTheme' {
 
 
 const useStyles = makeStyles(() => ({
+	page: {
+		width: '100vw',
+		minHeight: '100vh',
+		backgroundColor: '#25232a',
+		color: theme.palette.common.white,
+	},
 	root: {
 		position: 'absolute',
 		width: '100vw',
@@ -61,14 +68,14 @@ const TitleBar = function () {
 			<span className={classes.title} style={{ marginLeft: 10 }}>
 				LobbyBrowser
 			</span>
-			<IconButton className={classes.button} size="small" onClick={() => ipcRenderer.send('reload', true)}>
+			<IconButton className={classes.button} size="small" onClick={() => bridge.send('reload', true)}>
 				<RefreshSharpIcon htmlColor="#777" />
 			</IconButton>
 			<IconButton
 				className={[classes.button, classes.minimalizeIcon].join(' ')}
 				style={{ right: 20 }}
 				size="small"
-				onClick={() => ipcRenderer.send('minimize', true)}
+				onClick={() => bridge.send('minimize', true)}
 			>
 				<MinimizeIcon htmlColor="#777" y="100" />
 			</IconButton>
@@ -77,9 +84,7 @@ const TitleBar = function () {
 				className={classes.button}
 				style={{ right: 0 }}
 				size="small"
-				onClick={() => {
-					window.close();
-				}}
+				onClick={() => bridge.send('hideWindow', true)}
 			>
 				<CloseIcon htmlColor="#777" />
 			</IconButton>
@@ -87,18 +92,21 @@ const TitleBar = function () {
 	);
 };
 
-// @ts-ignore
-export default function App({ t }): JSX.Element {
+export default function App(): JSX.Element {
+	const { t } = useTranslation();
+	const classes = useStyles();
 	return (
         <StyledEngineProvider injectFirst>
             <ThemeProvider theme={theme}>
-                <TitleBar />
-                <LobbyBrowser t={t}></LobbyBrowser>
+                <LegacyThemeProvider theme={theme}>
+                    <div className={classes.page}>
+                        <TitleBar />
+                        <LobbyBrowser t={t}></LobbyBrowser>
+                    </div>
+                </LegacyThemeProvider>
             </ThemeProvider>
         </StyledEngineProvider>
     );
 }
-// @ts-ignore
-const App2 = withNamespaces()(App);
-// @ts-ignore
-ReactDOM.render(<App2 />, document.getElementById('app'));
+
+ReactDOM.render(<App />, document.getElementById('app'));

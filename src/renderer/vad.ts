@@ -144,7 +144,9 @@ export default function (
 	}
 
 	function destroy() {
-		captureTimeout && clearTimeout(captureTimeout);
+		if (captureTimeout) {
+			clearTimeout(captureTimeout);
+		}
 		disconnect();
 		scriptProcessorNode.onaudioprocess = null;
 	}
@@ -176,7 +178,11 @@ export default function (
 		vadState = activityCounter > activityCounterThresh;
 
 		if (prevVadState !== vadState) {
-			vadState ? onVoiceStart() : onVoiceStop();
+			if (vadState) {
+				onVoiceStart();
+			} else {
+				onVoiceStop();
+			}
 			prevVadState = vadState;
 		}
 

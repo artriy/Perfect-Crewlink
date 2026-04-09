@@ -1,8 +1,8 @@
 import Link from '@mui/material/Link';
 import Typography from '@mui/material/Typography';
 import React from 'react';
-import { shell, ipcRenderer } from 'electron';
 import makeStyles from '@mui/styles/makeStyles';
+import { bridge } from './bridge';
 
 const useStyles = makeStyles(() => ({
 	button: {
@@ -23,7 +23,7 @@ const useStyles = makeStyles(() => ({
 	},
 }));
 const onRefreshClick = () => {
-	ipcRenderer.send('reload');
+	bridge.send('reload');
 };
 
 const SupportLink: React.FC = function () {
@@ -32,7 +32,7 @@ const SupportLink: React.FC = function () {
 	return (
 		<Typography align="center">
 			Need help?&nbsp;
-			<Link href="#" color="secondary" onClick={() => shell.openExternal('https://discord.gg/4cpvp3KyhF')}>
+			<Link href="#" color="secondary" onClick={() => bridge.openExternal('https://github.com/LoMce/Perfect-Crewlink/issues')}>
 				Get support
 			</Link>
 			<button className={classes.button} onClick={onRefreshClick}>

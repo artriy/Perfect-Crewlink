@@ -1,3 +1,4 @@
+html,
 body,
 #app {
 	width: 100vw;
@@ -5,6 +6,7 @@ body,
 	margin: 0;
 	padding-top: 0px;
 	overflow: hidden;
+	background: transparent;
 	color: white;
 	font-family: 'Varela', sans-serif;
 }

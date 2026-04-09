@@ -11,6 +11,9 @@ const useStyles = makeStyles((theme) => ({
 		width: '100vw',
 		height: '100vh',
 		paddingTop: theme.spacing(3),
+		boxSizing: 'border-box',
+		backgroundColor: '#25232a',
+		color: theme.palette.common.white,
 	},
 	error: {
 		paddingTop: theme.spacing(4),

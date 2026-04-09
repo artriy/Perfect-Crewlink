@@ -16,12 +16,12 @@ import WifiOff from '@mui/icons-material/WifiOff';
 import LinkOff from '@mui/icons-material/LinkOff';
 import ErrorOutline from '@mui/icons-material/ErrorOutline'; //@ts-ignore
 import RadioSVG from '../../static/radio.svg';
-import Tooltip from 'react-tooltip-lite';
+import Tooltip from '@mui/material/Tooltip';
 import { SocketConfig } from '../common/ISettings';
 import Slider from '@mui/material/Slider';
 import VolumeUp from '@mui/icons-material/VolumeUp';
 import IconButton from '@mui/material/IconButton';
-import Grid from '@mui/material/Grid';
+import Grid from '@mui/material/GridLegacy';
 import { ModsType } from '../common/Mods';
 
 const useStyles = makeStyles(() => ({
@@ -160,8 +160,9 @@ const Avatar: React.FC<AvatarProps> = function ({
 		}
 		return (
 			<Tooltip
-				mouseOutDelay={300}
-				content={
+				arrow
+				placement="top"
+				title={
 					<div className={classes.innerTooltip}>
 						<b>{player.name}</b>
 						<Grid container spacing={0} className={classes.slidecontainer}>
@@ -171,7 +172,8 @@ const Avatar: React.FC<AvatarProps> = function ({
 										socketConfig.isMuted = !socketConfig.isMuted;
 									}}
 									style={{ margin: '1px 1px 0px 0px' }}
-									size="large">
+									size="large"
+								>
 									{muteButtonIcon}
 								</IconButton>
 							</Grid>
@@ -198,10 +200,11 @@ const Avatar: React.FC<AvatarProps> = function ({
 						</Grid>
 					</div>
 				}
-				padding={5}
 			>
-				{canvas}
-				{icon}
+				<div className={classes.relative}>
+					{canvas}
+					{icon}
+				</div>
 			</Tooltip>
 		);
 	} else {
@@ -265,7 +268,6 @@ const useCanvasStyles = makeStyles(() => ({
 		display: ({ isAlive }: UseCanvasStylesParams) => (isAlive ? 'block' : 'none'),
 	},
 	avatar: {
-		// overflow: 'hidden',
 		borderRadius: '50%',
 		position: 'relative',
 		borderStyle: 'solid',

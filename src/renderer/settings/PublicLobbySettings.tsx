@@ -45,6 +45,11 @@ const RawPublicLobbySettings: React.FC<publicLobbySettingProps> = function ({
 
 	const [lobbySettingState, setLobbySettingState] = useState(lobbySettings);
 
+	const persistLobbySettings = () => {
+		updateSetting('publicLobby_title', lobbySettingState.publicLobby_title);
+		updateSetting('publicLobby_language', lobbySettingState.publicLobby_language);
+	};
+
 	return (
 		<>
 			<Button
@@ -56,13 +61,21 @@ const RawPublicLobbySettings: React.FC<publicLobbySettingProps> = function ({
 			>
 				{t('settings.lobbysettings.public_lobby.change_settings')}
 			</Button>
-			<Dialog fullScreen open={open} onClose={() => setOpen(false)}>
+			<Dialog
+				fullScreen
+				open={open}
+				onClose={() => {
+					persistLobbySettings();
+					setOpen(false);
+				}}
+			>
 				<div className={classes.header}>
 					<DialogTitle>{t('settings.lobbysettings.public_lobby.change_settings')}</DialogTitle>
 					<IconButton
 						className={classes.back}
 						size="small"
 						onClick={() => {
+							persistLobbySettings();
 							setOpen(false);
 						}}
 					>
@@ -76,7 +89,6 @@ const RawPublicLobbySettings: React.FC<publicLobbySettingProps> = function ({
 						label={t('settings.lobbysettings.public_lobby.title')}
 						value={lobbySettingState.publicLobby_title}
 						onChange={(ev) => setLobbySettingState({ ...lobbySettingState, publicLobby_title: ev.target.value })}
-						onBlur={(ev) => updateSetting('publicLobby_title', ev.target.value)}
 						variant="outlined"
 						color="primary"
 						disabled={!canChange}
@@ -91,7 +103,6 @@ const RawPublicLobbySettings: React.FC<publicLobbySettingProps> = function ({
 						InputLabelProps={{ shrink: true }}
 						value={lobbySettingState.publicLobby_language}
 						onChange={(ev) => setLobbySettingState({ ...lobbySettingState, publicLobby_language: ev.target.value })}
-						onBlur={(ev) => updateSetting('publicLobby_language', ev.target.value)}
 						disabled={!canChange}
 					>
 						{Object.entries(languages).map(([key, value]) => (
@@ -107,6 +118,7 @@ const RawPublicLobbySettings: React.FC<publicLobbySettingProps> = function ({
 					<Button
 						color="primary"
 						onClick={() => {
+							persistLobbySettings();
 							setOpen(false);
 						}}
 					>

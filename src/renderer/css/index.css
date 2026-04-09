@@ -13,13 +13,10 @@ body {
 #app {
 	width: 100vw;
 	height: 100vh;
+	background-color: #25232a;
+	color: white;
 }
 
-.react-tooltip-lite {
-	background: #23272adb;
-	border: 1px solid gray;
-	border-radius: 5px;
-}
 
 .otherplayers > * {
 	margin: 5px;

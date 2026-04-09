@@ -1,5 +1,145 @@
 import { MapType, Vector2 } from './AmongusMap';
-import intersect from 'path-intersection';
+
+type Point = { x: number; y: number };
+type Segment = { start: Point; end: Point };
+
+function tokenizePath(path: string): string[] {
+	return path
+		.replace(/,/g, ' ')
+		.trim()
+		.match(/[A-Za-z]|-?\d*\.?\d+/g) ?? [];
+}
+
+function sampleCubicBezier(p0: Point, p1: Point, p2: Point, p3: Point, steps = 12): Segment[] {
+	const pointAt = (t: number): Point => {
+		const mt = 1 - t;
+		return {
+			x:
+				mt * mt * mt * p0.x +
+				3 * mt * mt * t * p1.x +
+				3 * mt * t * t * p2.x +
+				t * t * t * p3.x,
+				y:
+				mt * mt * mt * p0.y +
+				3 * mt * mt * t * p1.y +
+				3 * mt * t * t * p2.y +
+				t * t * t * p3.y,
+		};
+	};
+
+	const segments: Segment[] = [];
+	let previous = p0;
+	for (let step = 1; step <= steps; step++) {
+		const next = pointAt(step / steps);
+		segments.push({ start: previous, end: next });
+		previous = next;
+	}
+	return segments;
+}
+
+function pathToSegments(path: string): Segment[] {
+	const tokens = tokenizePath(path);
+	const segments: Segment[] = [];
+	let index = 0;
+	let current: Point = { x: 0, y: 0 };
+	let start: Point | null = null;
+	let command = '';
+
+	const readNumber = () => Number(tokens[index++]);
+
+	while (index < tokens.length) {
+		const token = tokens[index];
+		if (/^[A-Za-z]$/.test(token)) {
+			command = token;
+			index++;
+		}
+
+		switch (command) {
+			case 'M': {
+				current = { x: readNumber(), y: readNumber() };
+				start = current;
+				command = 'L';
+				break;
+			}
+			case 'L': {
+				const next = { x: readNumber(), y: readNumber() };
+				segments.push({ start: current, end: next });
+				current = next;
+				break;
+			}
+			case 'H': {
+				const next = { x: readNumber(), y: current.y };
+				segments.push({ start: current, end: next });
+				current = next;
+				break;
+			}
+			case 'V': {
+				const next = { x: current.x, y: readNumber() };
+				segments.push({ start: current, end: next });
+				current = next;
+				break;
+			}
+			case 'C': {
+				const c1 = { x: readNumber(), y: readNumber() };
+				const c2 = { x: readNumber(), y: readNumber() };
+				const end = { x: readNumber(), y: readNumber() };
+				segments.push(...sampleCubicBezier(current, c1, c2, end));
+				current = end;
+				break;
+			}
+			case 'Z': {
+				if (start) {
+					segments.push({ start: current, end: start });
+					current = start;
+				}
+				break;
+			}
+			default: {
+				index++;
+				break;
+			}
+		}
+	}
+
+	return segments;
+}
+
+function orientation(a: Point, b: Point, c: Point): number {
+	return (b.y - a.y) * (c.x - b.x) - (b.x - a.x) * (c.y - b.y);
+}
+
+function onSegment(a: Point, b: Point, c: Point): boolean {
+	return (
+		Math.min(a.x, c.x) <= b.x &&
+		b.x <= Math.max(a.x, c.x) &&
+		Math.min(a.y, c.y) <= b.y &&
+		b.y <= Math.max(a.y, c.y)
+	);
+}
+
+function segmentsIntersect(a: Segment, b: Segment): boolean {
+	const o1 = orientation(a.start, a.end, b.start);
+	const o2 = orientation(a.start, a.end, b.end);
+	const o3 = orientation(b.start, b.end, a.start);
+	const o4 = orientation(b.start, b.end, a.end);
+
+	if (o1 === 0 && onSegment(a.start, b.start, a.end)) return true;
+	if (o2 === 0 && onSegment(a.start, b.end, a.end)) return true;
+	if (o3 === 0 && onSegment(b.start, a.start, b.end)) return true;
+	if (o4 === 0 && onSegment(b.start, a.end, b.end)) return true;
+
+	return (o1 > 0) !== (o2 > 0) && (o3 > 0) !== (o4 > 0);
+}
+
+function pathIntersectsLine(path: string, start: Point, end: Point): boolean {
+	const line = { start, end };
+	for (const segment of pathToSegments(path)) {
+		if (segmentsIntersect(segment, line)) {
+			return true;
+		}
+	}
+	return false;
+}
 
 export const colliderMaps: { [key in MapType]: string[] | undefined } = {
 	[MapType.THE_SKELD]: [
@@ -28,7 +168,6 @@ export const colliderMaps: { [key in MapType]: string[] | undefined } = {
 		'M 25.47 56.91 V 55.36 H 25.14 V 53.16 L 25.12 53.34 H 22.78 V 50.72 H 31.01 V 51.12 H 31.25 V 48.01 V 50.23 H 24.93 L 24.16 49.44 V 47.47 L 25.09 46.97 H 27.87 L 26.45 48.52 H 26.81 L 28.56 46.76 V 45.95 L 26.7 43.61 L 26.24 43.61 L 27.83 45.66 H 25.32 L 24.57 44.56 V 42.67 L 25.47 41.92 H 28.3 H 23.84 V 41.75 H 23.59 V 44.04 H 14.65 V 38.11 H 23.59 V 39.96 H 23.84 V 39.63 H 25.83 L 25.22 39.54 L 24.73 38.7 V 36.7 H 26.53 V 36.95 H 27.34 V 36.13 H 28.7 V 39.59 H 27.57 H 31.17 V 39.96 H 31.33 V 37.11 H 37.45 V 32.55 H 38.43 H 36.3 V 31.97 V 35.81 H 25.81 V 24.49 H 36.3 V 30.42 V 30.22 H 42.66 V 30.08 H 43.88 V 25.78 H 42.9 V 22.44 H 47.06 V 22.85 H 47.63 V 22.44 H 54.47 V 23.66 H 54.64 V 23.09 H 56.59 V 23.5 H 57.93 V 25.75 H 54.64 V 25.46 H 54.47 V 26.35 H 47.63 V 25.78 H 47.06 V 26.35 H 45.96 V 25.78 H 45.22 V 30.08 H 45.92 V 30.88 H 49.45 V 29.78 H 56.42 V 26.51 H 63.84 V 29.77 H 64.01 V 29.12 H 67.67 V 33.52 H 67.84 V 33.2 H 68.57 V 31.49 H 69.95 V 33.24 H 70.04 V 31.49 H 71.42 V 33.2 H 71.59 V 31.49 H 72.97 V 33.2 H 73.13 V 31.49 H 74.44 V 33.2 H 75.09 V 35.4 H 74.52 V 35.56 H 75.74 V 36.46 H 79.73 V 44.28 H 73.35 L 73.46 44.37 V 46.8 H 70.93 V 47.86 H 67.27 V 46.8 H 66.7 V 46.4 H 66.45 V 50.03 L 65.83 50.63 H 62.25 L 61.4 49.77 V 49.17 H 61.24 V 49.41 H 59.93 V 49.74 H 60.59 V 51.86 H 57.98 V 51.69 H 57.57 V 51.86 H 54.88 V 51.53 H 52.93 L 52.6 51.17 V 49.41 H 51.87 V 49.17 H 51.54 V 49.41 H 50.81 V 50.96 H 49.42 V 53.16 H 47.79 V 54.22 H 50.88 V 56.91 H 45.05 V 53.57 H 46.4 V 53.16 H 44.49 V 52.83 V 53.16 H 38.5 V 52.83 H 38.34 V 53.24 H 31.25 V 52.74 H 31.05 V 53.32 H 27.3 L 27.26 53.16 V 55.36 H 26.45 V 56.91 Z M 44.49 49.05 H 49.34 V 47.06 H 48.97 V 44.84 H 51.48 L 51.72 45.04 L 51.86 44.81 H 54.52 V 45.01 H 54.8 V 44.85 H 57.65 V 45.01 H 57.9 V 44.85 H 58.55 V 44.6 H 56.92 V 42.89 H 60.59 V 44.6 H 59.93 V 44.85 H 60.68 V 47.01 H 59.93 L 59.93 47.21 H 61.23 L 61.29 47.66 V 45.29 L 62.45 44.36 H 66.45 V 44.69 H 66.62 V 44.36 H 71.71 H 69.79 V 43.99 H 65.08 V 39.74 V 42.65 H 60.18 V 40.86 H 59.62 V 41.39 H 57.72 V 41.1 H 57.49 V 40.82 L 57.4 41.1 H 53.66 V 42.4 H 54.56 V 44.34 H 51.29 V 41.1 H 47.55 V 42.4 H 48.45 V 44.28 H 45.19 V 41.1 H 44.3 L 44.13 40.82 V 43.22 H 31.33 V 41.92 H 29.83 L 31.09 42.75 V 46.36 V 44.82 H 33.45 V 47.78 H 37.89 V 49.49 H 38.42 V 50.88 H 44.49 V 51.23 Z M 54.8 49.98 V 49.66 H 55.53 V 49.49 H 54.8 V 49.25 H 54.56 V 49.49 H 53.82 V 49.98 Z M 57.9 49.98 V 49.66 H 58.55 V 49.49 H 57.9 V 49.25 H 57.65 V 49.49 H 57 V 49.66 H 57.65 V 49.98 Z M 51.79 47.62 V 47.29 H 52.52 V 47.05 H 51.79 V 46.8 H 51.54 V 47.05 H 50.97 V 47.29 H 51.54 V 47.62 Z M 54.8 47.62 V 47.21 H 55.53 V 47.05 H 54.8 V 46.8 H 54.56 V 47.05 H 53.99 V 47.21 H 54.56 V 47.62 Z M 57.9 47.62 V 47.21 H 58.55 V 47.05 H 57.9 V 46.8 H 57.65 V 47.05 H 57 V 47.21 H 57.65 V 47.62 Z M 57.5 38.66 H 57.65 V 36.46 H 56.67 V 34.01 H 59.08 H 56.67 V 31.73 H 56.42 V 31.36 V 32.22 H 51.22 V 32.22 H 56.42 V 34.56 H 50.25 V 32.22 H 49.46 V 31.7 H 45.92 V 32.34 H 44.62 V 33.85 H 42.66 V 32.01 V 32.55 H 39.75 H 40.22 V 37.11 H 44.13 V 39.02 V 38.66 H 45.27 V 37.12 H 44.57 V 35.52 H 47.14 V 38.66 H 47.87 V 36.58 H 48.93 V 35.6 H 50.73 V 38.66 H 50.97 V 36.37 H 53.9 V 38.66 H 54.07 V 35.56 H 55.37 V 36.54 H 57 V 38.66 H 57.41 V 39.1 H 57.5 Z M 60.18 38.09 V 36.21 H 64.82 V 38.17 H 65.06 V 37.23 H 69.75 V 36.42 H 72.15 V 35.42 H 73.09 H 67.84 V 35.19 V 35.56 H 64.01 V 31.49 V 34 H 60.58 H 61.16 V 35.93 H 59.69 V 38.17 H 63.32 Z',
 	],
 	[MapType.SUBMERGED]: [
-		// not tested might require some small offset adjustments
 		'M 40 4.7 C 40.5 4.7 41 4.9 41.2 5.5 V 7.1 H 42.8 V 8.3 L 44.5 10 V 11 H 41.3 V 13.6 L 43.3 15.6 L 45.4 13.5 V 12.8 H 44.6 V 9.4 L 42.9 7.7 V 7.1 H 48.9 V 11.4 L 47.5 12.8 H 46.7 V 14.4 L 44.3 16.8 V 17.4 H 46.9 V 18.7 H 49.6 V 11.3 H 51.1 V 12.1 H 51.3 V 11.4 H 52.9 V 14.2 H 51.3 V 13.5 H 51.1 V 15.3 H 53.1 V 13.5 H 55.7 V 17.4 H 51.1 V 26.9 H 48.9 V 29.4 H 49.4 V 30.5 H 49.6 V 29.8 H 51.2 V 32.7 H 49.6 V 31.9 H 49.3 V 32.7 H 48.4 V 33.7 H 49.1 V 35.5 H 46.4 V 33.7 H 47.1 V 32.8 H 46.3 V 31.6 L 45.4 30 H 44.9 V 30.8 H 45.3 L 46.2 32.2 V 32.8 H 43.5 V 28 H 44.2 V 22.9 H 42.1 V 24.4 H 42.4 V 26.1 H 40.8 V 26.8 H 42.4 V 30.5 C 42.4 31.1 41.6 31.4 41 31.4 C 40.5 31.4 39.7 31 39.7 30.4 V 29 H 41 V 28.3 H 35.1 V 26.9 H 34.9 V 27.7 H 31.8 V 22.7 H 32.7 V 21.4 H 31.3 V 28.6 H 33.9 V 31.4 H 28.5 V 27.1 H 29.8 V 21.4 H 29.1 V 25.5 H 24.3 V 18.7 H 29.1 V 20 H 29.9 V 15.6 H 27 V 8.3 H 28.3 L 30.8 9.7 V 10.5 H 36 V 12.3 H 39.9 V 11 H 39.1 L 37.3 9.2 V 7.1 H 38.8 V 5.5 C 39 4.9 39.6 4.7 40 4.7 Z M 51.1 59.4 V 60.1 H 51.3 V 59.5 H 52.9 V 62.4 H 51.3 V 61.6 H 51.1 V 64 H 54.4 V 66.3 L 52.9 67.4 V 69.7 H 50.7 V 70.3 H 51.4 V 70.5 H 51.5 V 70.3 H 52.8 L 54.3 71.5 V 73 H 51.5 V 72 H 51.4 V 73 H 48.4 V 70.3 H 49.3 V 69.7 H 48.4 V 68.3 H 46.9 V 71 H 43.5 V 72.1 L 46.8 73 V 76.9 H 45.9 V 77.7 H 49.4 V 78.6 H 49.5 V 77.9 H 51.2 V 80.8 H 49.5 V 80 H 49.4 V 80.9 H 48.4 V 81.8 H 49.2 V 83.5 H 46.3 V 81.8 H 47.1 V 80.9 H 43.5 V 80.1 H 37.8 V 80.9 H 36 V 80 H 35.8 V 80.9 H 32.1 L 31.7 80.6 V 81.3 L 32 81.6 H 34.2 V 83.8 H 28.1 V 77.8 H 30.3 V 79.9 L 30.5 80.1 V 79.4 L 30.3 79.2 V 75.2 H 31.1 V 74.3 H 30.3 V 72.4 H 31.1 V 69.6 H 29.6 V 75.1 H 23.8 V 73 H 28.1 V 72.4 H 23.8 V 69.2 H 28.1 V 68.5 H 23.8 V 66.5 H 29.6 V 68.1 H 32.8 V 67.2 H 32 V 65.4 H 34.8 V 67.2 H 34.1 V 68.1 H 35.7 V 67.2 H 35 V 65.4 H 37.8 V 67.2 H 37 V 68.1 H 39.7 V 65.5 H 41.1 V 59.4 Z M 36 13.7 V 15.6 H 31.2 V 20 H 32.7 V 19 H 32 V 17.4 H 34.8 V 19 H 34.1 V 20 H 35.7 V 19 H 35 V 17.4 H 37.8 V 19 H 37 V 20 H 39.7 V 17.4 H 42.2 V 16.8 L 39.9 14.4 V 13.7 Z M 34.1 21.4 V 22.7 H 35 V 25.5 H 35.1 V 24.9 L 36.7 24.5 H 40.7 V 22.9 H 39.7 V 21.4 Z M 42.5 60.8 V 65.5 H 46.9 V 66.8 H 48.4 V 63.2 H 49.8 V 62.4 H 48.4 V 65.4 H 47 V 63.9 L 45.7 61.7 V 60.8 Z M 32.5 69.6 V 72.4 H 33.3 V 74.3 H 32.5 V 75.2 H 33.3 V 76.4 L 34.8 77.8 H 35.8 V 78.5 H 36 V 77.8 H 37.8 V 78.6 H 43.5 V 77.7 H 44.5 V 76.9 H 38.8 V 73 L 42.1 72.1 V 71 H 39.7 V 69.6 H 36.1 V 72.2 H 37.5 V 75.6 H 35.5 L 34.2 74.3 V 70.7 H 34.7 V 69.6 Z M 46.9 22.9 H 45.5 V 28 H 46.1 L 47 29.4 H 47.5 V 25.4 H 49.7 V 20.1 H 46.9 Z',
 	],
 	[MapType.FUNGLE]: [
@@ -76,104 +215,108 @@ export const doorMaps: { [key in MapType]: { [key in number]: string | undefined
 		1: 'M 44.942 30.499 H 47.27',
 	},
 	[MapType.POLUS]: {
-		0: 'M 51.257 48.531 V 50.205', // right elecrtrical door
-		1: 'M 48.14 50.544 H 46.811 ', // electical vence door
-		2: 'M 44.751 53.131 H 46.111', // electical door to o
-		3: 'M 44.798 58.095 H 46.244 ', // o2 door to electical
-		4: 'M 45.244 61.962 H 46.577', // o2 to outside
-		5: 'M 52.257 60.719 H 53.791', // Weapons door
-		6: 'M 50.113 58.923 H 51.646', // communications door
-		7: 'M 68.703 56.136 V 57.763', // office vidals door
-		8: 'M 57.403 60.87 V 62.541', // office left door
-		9: 'M 65.938 48.445 H 67.311', // door to drill
-		10: 'M 64.738 48.655 V 50.384', // door outside to med
-		11: 'M 57.193 49.972 V 51.668', // storage door
-		12: 'M 65.475 63.639 V 65.376', // decom door office->spec
-		13: 'M 63.226 63.121 H 64.575', // decom door spec->office
-		14: 'M 77.996 50.401 V 48.711', // decom door med->spec
-		15: 'M 78.363 50.967 H 79.756', // decom door spec->med
+		0: 'M 51.257 48.531 V 50.205',
+		1: 'M 48.14 50.544 H 46.811 ',
+		2: 'M 44.751 53.131 H 46.111',
+		3: 'M 44.798 58.095 H 46.244 ',
+		4: 'M 45.244 61.962 H 46.577',
+		5: 'M 52.257 60.719 H 53.791',
+		6: 'M 50.113 58.923 H 51.646',
+		7: 'M 68.703 56.136 V 57.763',
+		8: 'M 57.403 60.87 V 62.541',
+		9: 'M 65.938 48.445 H 67.311',
+		10: 'M 64.738 48.655 V 50.384',
+		11: 'M 57.193 49.972 V 51.668',
+		12: 'M 65.475 63.639 V 65.376',
+		13: 'M 63.226 63.121 H 64.575',
+		14: 'M 77.996 50.401 V 48.711',
+		15: 'M 78.363 50.967 H 79.756',
 	},
 	[MapType.THE_SKELD]: {
-		0: 'M 45.059 37.568 V 39.744 ', // cafetaria-> weapons
-		3: 'M 38.371 44.717 H 40.207', // cafetaria -> Admin hallway
-		8: 'M 33.649 37.568 V 39.787', // cafetaria -> medbay hallway
-		10: 'M 29.977 39.787 H 31.77', //medbay
-		2: 'M 25.3 39.787 V 37.568 ', // upperengine <- medbay hallway
-		5: 'M 22.196 41.945 H 23.989', // upperengine <- security hallway
-		6: 'M 25.154 44.051 V 46.183', // security
-		4: 'M 22.196 48.663 H 24.169', // lowerengine <- security hallway
-		11: 'M 25.412 52.405 V 50.274', // lowerengine <- Elecrtical hallway //25.4117 51.3337
-		9: 'M 29.628 53.101 H 31.333', // elecrtrical
-		1: 'M 34.786 55.353 V 53.101', //storage -> Electrical
-		7: 'M 38.371 48.231 H 40.207', // storage -> Admin
-		12: 'M 41.081 52.971 V 50.839', // storage -> shields
+		0: 'M 45.059 37.568 V 39.744 ',
+		3: 'M 38.371 44.717 H 40.207',
+		8: 'M 33.649 37.568 V 39.787',
+		10: 'M 29.977 39.787 H 31.77',
+		2: 'M 25.3 39.787 V 37.568 ',
+		5: 'M 22.196 41.945 H 23.989',
+		6: 'M 25.154 44.051 V 46.183',
+		4: 'M 22.196 48.663 H 24.169',
+		11: 'M 25.412 52.405 V 50.274',
+		9: 'M 29.628 53.101 H 31.333',
+		1: 'M 34.786 55.353 V 53.101',
+		7: 'M 38.371 48.231 H 40.207',
+		12: 'M 41.081 52.971 V 50.839',
 	},
 	[MapType.AIRSHIP]: {
-		0: 'M 23.8376 41.7526 V 39.96', // Comms Left
-		1: 'M 31.1709 39.96 V 41.9155', //Comms Right
-		2: 'M 27.5694 39.6096 H 25.8339', //Comms Top
-		3: 'M 28.295 41.9155 H 29.833', //Comms Bottom
-		4: 'M 38.428 32.5452 H 39.753', //Brig Bottom
-		5: 'M 36.3043 31.9748 V 30.424', //Brig Left
-		6: 'M 42.6598 30.224 V 32.012 ', //Brig Right
-		7: 'M 31.122 46.3563 V 48.0104', //Armory Right
-		8: 'M 31.2524 51.1229 V 52.7363', //Kitchen Left
-		9: 'M 38.4228 50.8785 V 52.8341', //Kitchen Right
-		10: 'M 44.1346 39.0229 V 40.8155', //Hallway left
-		11: 'M 57.426 39.117 V 40.8155', //Hallway right
-		12: 'M 56.418 31.3637 V 29.788', //Records Left
-		13: 'M 64.008 29.7748 V 38.1674', //Records Right
-		14: 'M 59.078 34.0118 H 60.578', //Records Bottom
-		15: 'M 68.5709 33.197 H 70.0376', //Bathroom door 1
-		16: 'M 70.005 33.197 H 71.4228', //Bathroom door 2
-		17: 'M 71.5857 33.197 H 72.9709', //Bathroom door  3
-		18: 'M 73.1339 33.197 H 74.4376', // Bathroom door 4
-		19: 'M 61.2946 47.66 V 49.1674', //Medical Left
-		20: 'M 71.708 44.3274 H 73.3457', //Medical Top
+		0: 'M 23.8376 41.7526 V 39.96',
+		1: 'M 31.1709 39.96 V 41.9155',
+		2: 'M 27.5694 39.6096 H 25.8339',
+		3: 'M 28.295 41.9155 H 29.833',
+		4: 'M 38.428 32.5452 H 39.753',
+		5: 'M 36.3043 31.9748 V 30.424',
+		6: 'M 42.6598 30.224 V 32.012 ',
+		7: 'M 31.122 46.3563 V 48.0104',
+		8: 'M 31.2524 51.1229 V 52.7363',
+		9: 'M 38.4228 50.8785 V 52.8341',
+		10: 'M 44.1346 39.0229 V 40.8155',
+		11: 'M 57.426 39.117 V 40.8155',
+		12: 'M 56.418 31.3637 V 29.788',
+		13: 'M 64.008 29.7748 V 38.1674',
+		14: 'M 59.078 34.0118 H 60.578',
+		15: 'M 68.5709 33.197 H 70.0376',
+		16: 'M 70.005 33.197 H 71.4228',
+		17: 'M 71.5857 33.197 H 72.9709',
+		18: 'M 73.1339 33.197 H 74.4376',
+		19: 'M 61.2946 47.66 V 49.1674',
+		20: 'M 71.708 44.3274 H 73.3457',
 	},
 	[MapType.SUBMERGED]: undefined,
 	[MapType.FUNGLE]: {
-		0: 'M 62.95 27.87 H 65.34', // Horizontal Comms
-		1: 'M 58.53 27.51 V 25.63', // Vertical Comms
-		2: 'M 23.51 45.57 H 25.44', // Kitchen
-		3: 'M 34.65 47.6 H 36.84', // Laboratory
-		4: 'M 50.9 38.43 V 35.82', // Lookout
-		5: 'M 51.38 33.62 H 53.88', // MiningPit
-		6: 'M 59.52 47.91 V 45.62', // Reactor
-		7: 'M 38.31 36.76 V 34.37', // Storage
+		0: 'M 62.95 27.87 H 65.34',
+		1: 'M 58.53 27.51 V 25.63',
+		2: 'M 23.51 45.57 H 25.44',
+		3: 'M 34.65 47.6 H 36.84',
+		4: 'M 50.9 38.43 V 35.82',
+		5: 'M 51.38 33.62 H 53.88',
+		6: 'M 59.52 47.91 V 45.62',
+		7: 'M 38.31 36.76 V 34.37',
 	},
 	[MapType.THE_SKELD_APRIL]: undefined,
 	[MapType.UNKNOWN]: undefined,
 };
 
 export function poseCollide(p1: Vector2, p2: Vector2, map: MapType, closedDoors: number[]): boolean {
+	const lineStart = { x: p1.x + 40, y: 40 - p1.y };
+	const lineEnd = { x: p2.x + 40, y: 40 - p2.y };
+
 	if (map === MapType.THE_SKELD_APRIL) {
-		p1.x = p1.x * -1;
-		p2.x = p2.x * -1;
+		lineStart.x = p1.x * -1 + 40;
+		lineEnd.x = p2.x * -1 + 40;
 		map = MapType.THE_SKELD;
 	}
+
 	const colliderMap = colliderMaps[map];
 	if (!colliderMap || map === MapType.UNKNOWN) {
 		return false;
 	}
+
 	for (const collider of colliderMap) {
-		const intersections = intersect(collider, `M ${p1.x + 40} ${40 - p1.y} L ${p2.x + 40} ${40 - p2.y}`);
-		if (intersections.length > 0) {
+		if (pathIntersectsLine(collider, lineStart, lineEnd)) {
 			return true;
 		}
 	}
+
 	const doorMap = doorMaps[map];
 	if (!doorMap) {
 		return false;
 	}
+
 	for (const doorId of Object.values(closedDoors)) {
 		const doorPath = doorMap[doorId];
-		if (doorPath) {
-			const intersections = intersect(doorPath, `M ${p1.x + 40} ${40 - p1.y} L ${p2.x + 40} ${40 - p2.y}`);
-			if (intersections.length > 0) {
-				return true;
-			}
+		if (doorPath && pathIntersectsLine(doorPath, lineStart, lineEnd)) {
+			return true;
 		}
 	}
+
 	return false;
 }

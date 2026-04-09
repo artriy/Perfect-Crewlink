@@ -9,9 +9,9 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import Button from '@mui/material/Button';
-import { ipcRenderer } from 'electron';
+import { bridge } from '../bridge';
 import { IpcHandlerMessages, IpcMessages } from '../../common/ipc-messages';
-import io from 'socket.io-client';
+import io, { Socket } from 'socket.io-client';
 import i18next from 'i18next';
 import { Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Tooltip } from '@mui/material';
 import languages from '../language/languages';
@@ -87,18 +87,22 @@ function getModName(mod: string): string {
 	return modList.find((o) => o.id === mod)?.label || (mod ?? 'None')
 }
 
-// @ts-ignore
-export default function lobbyBrowser({ t }) {
+interface LobbyBrowserProps {
+	t: (key: string) => string;
+}
+
+export default function LobbyBrowser({ t }: LobbyBrowserProps) {
 	const classes = useStyles();
 	const [publiclobbies, setPublicLobbies] = useState<PublicLobbyMap>({});
-	const [socket, setSocket] = useState<SocketIOClient.Socket>();
-	const [code, setCode] = React.useState('');
+	const [socket, setSocket] = useState<Socket | null>(null);
+	const [code, setCode] = useState('');
 	const [, forceRender] = useState({});
 
 	const [mod, setMod] = useState<ModsType>('NONE');
+	const languageNames = languages as Record<string, { name?: string }>;
 	
 	useEffect(() => {
-		ipcRenderer.invoke(IpcMessages.REQUEST_MOD).then((mod: ModsType) => setMod(mod));
+		bridge.invoke(IpcMessages.REQUEST_MOD).then((mod: ModsType) => setMod(mod));
 
 		const s = io(serverUrl, {
 			transports: ['websocket'],
@@ -128,23 +132,24 @@ export default function lobbyBrowser({ t }) {
 			s.emit('lobbybrowser', true);
 		});
 
-		ipcRenderer.on(IpcHandlerMessages.JOIN_LOBBY_ERROR, (event, code, server) => {
+		bridge.on(IpcHandlerMessages.JOIN_LOBBY_ERROR, (_event, code, server) => {
 			console.log('ERROR: ', code);
-			setCode(`${code}  ${servers[server] ? `on region ${servers[server]}` : `\n Custom Server: ${server}`}`);
+			const serverCode = String(server);
+			setCode(`${String(code)}  ${servers[serverCode] ? `on region ${servers[serverCode]}` : `\n Custom Server: ${serverCode}`}`);
 		});
 		const secondPassed = setInterval(() => {
 			forceRender({});
 		}, 1000);
 		return () => {
-			socket?.emit('lobbybrowser', false);
-			socket?.close();
+			s.emit('lobbybrowser', false);
+			s.close();
 			clearInterval(secondPassed);
 		};
 	}, []);
 
 	return (
-		<div style={{ height: '100%', width: '100%', paddingTop: '15px' }}>
-			<div style={{ height: '500px', padding: '20px' }}>
+		<div style={{ minHeight: '100vh', width: '100%', paddingTop: '15px', backgroundColor: '#25232a', boxSizing: 'border-box' }}>
+			<div style={{ minHeight: '500px', padding: '20px', backgroundColor: '#25232a', boxSizing: 'border-box' }}>
 				<b>{t('lobbybrowser.header')}</b>
 				<Dialog
 					open={code !== ''}
@@ -167,8 +172,8 @@ export default function lobbyBrowser({ t }) {
 						</Button>
 					</DialogActions>
 				</Dialog>
-				<Paper>
-					<TableContainer component={Paper} className={classes.container}>
+				<Paper style={{ backgroundColor: '#1d1a23' }}>
+					<TableContainer component={Paper} className={classes.container} style={{ backgroundColor: '#1d1a23' }}>
 						<Table className={classes.table} aria-label="customized table" stickyHeader>
 							<TableHead>
 								<TableRow>
@@ -198,7 +203,7 @@ export default function lobbyBrowser({ t }) {
 												{getModName(row.mods)}
 											</StyledTableCell>
 											<StyledTableCell align="left">
-												{(languages as any)[row.language]?.name ?? 'English'}
+												{languageNames[row.language]?.name ?? 'English'}
 											</StyledTableCell>
 											<StyledTableCell align="left">
 												{row.gameState === GameState.LOBBY ? 'Lobby' : 'In game'}{' '}
@@ -225,7 +230,7 @@ export default function lobbyBrowser({ t }) {
 																socket?.emit(
 																	'join_lobby',
 																	row.id,
-																	(state: number, codeOrError: string, server: string, publicLobby: PublicLobby) => {
+																	(state: number, codeOrError: string, server: string) => {
 																		if (state === 0) {
 																			setCode(`${t('lobbybrowser.code')}: ${codeOrError} \n Region: ${server}`);
 																			// ipcRenderer.send(IpcHandlerMessages.JOIN_LOBBY, codeOrError, server);

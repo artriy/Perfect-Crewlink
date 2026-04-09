@@ -1,5 +1,5 @@
-import { shell } from 'electron';
 import React from 'react';
+import { bridge } from './bridge';
 import makeStyles from '@mui/styles/makeStyles';
 import Button from '@mui/material/Button';
 import { Tooltip } from '@mui/material';
@@ -30,7 +30,7 @@ const RawFooter: React.FC = function () {
 				<Button 
 					color="grey"
 					onClick={() => {
-						shell.openExternal('https://github.com/OhMyGuus/BetterCrewLink');
+						bridge.openExternal('https://github.com/LoMce/Perfect-Crewlink');
 					}}
 				>
 					<Tooltip title="Our GitHub page!" arrow>
@@ -45,7 +45,7 @@ const RawFooter: React.FC = function () {
 				<Button 
 					color="grey"
 					onClick={() => {
-						shell.openExternal('https://discord.gg/qDqTzvj4SH');
+						bridge.openExternal('https://discord.gg/qDqTzvj4SH');
 					}}
 				>
 					<Tooltip title="Join our Discord for support" arrow>
@@ -64,7 +64,7 @@ const RawFooter: React.FC = function () {
 				<Button 
 					color="grey"
 					onClick={() => {
-						shell.openExternal('https://ko-fi.com/ohmyguus');
+						bridge.openExternal('https://ko-fi.com/ohmyguus');
 					}}
 				>
 					<Tooltip title="Donate to support us!" arrow>

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, CSSProperties } from 'react';
-import { ipcRenderer } from 'electron';
+import { bridge } from './bridge';
 import { AmongUsState, GameState, VoiceState } from '../common/AmongUsState';
 import { IpcOverlayMessages, IpcMessages } from '../common/ipc-messages';
 import ReactDOM from 'react-dom';
@@ -7,12 +7,16 @@ import makeStyles from '@mui/styles/makeStyles';
 import './css/overlay.css';
 import Avatar from './Avatar';
 import { ISettings } from '../common/ISettings';
-import { DEFAULT_PLAYERCOLORS } from '../main/avatarGenerator';
+import { DEFAULT_PLAYERCOLORS } from '../common/playerColors';
+import { OVERLAY_STATE_KEYS, readOverlayState } from '../common/overlay-state';
+import SettingsStore from './settings/SettingsStore';
+import { CameraLocation, MapType } from '../common/AmongusMap';
 
 interface UseStylesProps {
 	height: number;
 	width: number;
 	oldHud: boolean;
+	aleLuduMode: boolean;
 }
 
 export interface playerContainerCss extends CSSProperties {
@@ -30,7 +34,7 @@ const useStyles = makeStyles(() => ({
 	},
 	tabletContainer: {
 		width: ({ oldHud }: UseStylesProps) => (oldHud ? '88.45%' : '100%'),
-		height: '10.5%',
+		height: ({ aleLuduMode, oldHud }: UseStylesProps) => (oldHud ? '10.5%' : aleLuduMode ? '7.875%' : '10.5%'),
 		left: ({ oldHud }: UseStylesProps) => (oldHud ? '4.7%' : '0.4%'),
 		top: ({ oldHud }: UseStylesProps) => (oldHud ? '18.4703%' : '15%'),
 		position: 'absolute',
@@ -38,13 +42,13 @@ const useStyles = makeStyles(() => ({
 		flexWrap: 'wrap',
 	},
 	playerContainer: {
-		width: ({ oldHud }: UseStylesProps) => (oldHud ? '46.41%' : '30%'),
-		height: ({ oldHud }: UseStylesProps) => (oldHud ? '100%' : '109%'),
+		width: ({ aleLuduMode, oldHud }: UseStylesProps) => (oldHud ? '46.41%' : aleLuduMode ? '22.5%' : '30%'),
+		height: ({ aleLuduMode, oldHud }: UseStylesProps) => (oldHud ? '100%' : aleLuduMode ? '81.75%' : '109%'),
 		borderRadius: ({ height }: UseStylesProps) => height / 100,
 		transition: 'opacity .1s linear',
-		marginBottom: ({ oldHud }: UseStylesProps) => (oldHud ? '2%' : '1.9%'),
-		marginRight: ({ oldHud }: UseStylesProps) => (oldHud ? '2.34%' : '0.23%'),
-		marginLeft: ({ oldHud }: UseStylesProps) => (oldHud ? '0%' : '2.4%'),
+		marginBottom: ({ aleLuduMode, oldHud }: UseStylesProps) => (oldHud ? '2%' : aleLuduMode ? '1.425%' : '1.9%'),
+		marginRight: ({ aleLuduMode, oldHud }: UseStylesProps) => (oldHud ? '2.34%' : aleLuduMode ? '0.1725%' : '0.23%'),
+		marginLeft: ({ aleLuduMode, oldHud }: UseStylesProps) => (oldHud ? '0%' : aleLuduMode ? '1.8%' : '2.4%'),
 		boxSizing: 'border-box',
 	},
 }));
@@ -66,48 +70,154 @@ function useWindowSize() {
 
 const iPadRatio = 854 / 579;
 
+const EMPTY_GAME_STATE: AmongUsState = {
+	gameState: GameState.UNKNOWN,
+	oldGameState: GameState.UNKNOWN,
+	lobbyCodeInt: -1,
+	lobbyCode: 'MENU',
+	players: [],
+	isHost: false,
+	clientId: 0,
+	hostId: 0,
+	comsSabotaged: false,
+	currentCamera: CameraLocation.NONE,
+	map: MapType.UNKNOWN,
+	lightRadius: 0,
+	lightRadiusChanged: false,
+	closedDoors: [],
+	currentServer: '',
+	maxPlayers: 0,
+	mod: 'NONE',
+	oldMeetingHud: false,
+};
+
+const EMPTY_VOICE_STATE: VoiceState = {
+	otherTalking: {},
+	playerSocketIds: {},
+	otherDead: {},
+	socketClients: {},
+	audioConnected: {},
+	impostorRadioClientId: -1,
+	localTalking: false,
+	localIsAlive: true,
+	muted: false,
+	deafened: false,
+	mod: 'NONE',
+};
+
 const Overlay: React.FC = function () {
-	const [gameState, setGameState] = useState<AmongUsState>((undefined as unknown) as AmongUsState);
-	const [voiceState, setVoiceState] = useState<VoiceState>((undefined as unknown) as VoiceState);
-	const [settings, setSettings] = useState<ISettings>((undefined as unknown) as ISettings);
-	const [playerColors, setColors] = useState<string[][]>(DEFAULT_PLAYERCOLORS);
+	const [gameState, setGameState] = useState<AmongUsState>(
+		() => readOverlayState<AmongUsState>(OVERLAY_STATE_KEYS.gameState) ?? EMPTY_GAME_STATE
+	);
+	const [voiceState, setVoiceState] = useState<VoiceState>(
+		() => readOverlayState<VoiceState>(OVERLAY_STATE_KEYS.voiceState) ?? EMPTY_VOICE_STATE
+	);
+	const [settings, setSettings] = useState<ISettings>(
+		() => readOverlayState<ISettings>(OVERLAY_STATE_KEYS.settings) ?? SettingsStore.store
+	);
+	const [playerColors, setColors] = useState<string[][]>(
+		() => readOverlayState<string[][]>(OVERLAY_STATE_KEYS.playerColors) ?? DEFAULT_PLAYERCOLORS
+	);
+
 	useEffect(() => {
-		const onState = (_: Electron.IpcRendererEvent, newState: AmongUsState) => {
+		let initRequests = 0;
+		const requestInitValues = () => {
+			bridge.send(IpcMessages.SEND_TO_MAINWINDOW, IpcOverlayMessages.REQUEST_INITVALUES);
+		};
+
+		const onState = (_: unknown, newState: AmongUsState) => {
 			setGameState(newState);
 		};
-		const onVoiceState = (_: Electron.IpcRendererEvent, newState: VoiceState) => {
+		const onVoiceState = (_: unknown, newState: VoiceState) => {
 			setVoiceState(newState);
 		};
-		const onSettings = (_: Electron.IpcRendererEvent, newState: ISettings) => {
+		const onSettings = (_: unknown, newState: ISettings) => {
 			console.log('Recieved settings..');
 
 			setSettings(newState);
 		};
-		const onColorChange = (_: Electron.IpcRendererEvent, colors: string[][]) => {
-			console.log('Recieved colors..');
+		const onColorChange = (_: unknown, colors: string[][]) => {
 			setColors(colors);
-			console.log('new colors: ', playerColors);
 		};
-		ipcRenderer.on(IpcOverlayMessages.NOTIFY_GAME_STATE_CHANGED, onState);
-		ipcRenderer.on(IpcOverlayMessages.NOTIFY_VOICE_STATE_CHANGED, onVoiceState);
-		ipcRenderer.on(IpcOverlayMessages.NOTIFY_SETTINGS_CHANGED, onSettings);
-		ipcRenderer.on(IpcOverlayMessages.NOTIFY_PLAYERCOLORS_CHANGED, onColorChange);
-		ipcRenderer.send(IpcMessages.SEND_TO_MAINWINDOW, IpcOverlayMessages.REQUEST_INITVALUES);
-		console.log('REQUEST_INITVALUES');
+		const onStorage = (event: StorageEvent) => {
+			if (!event.key) {
+				return;
+			}
+
+			if (event.key === OVERLAY_STATE_KEYS.gameState) {
+				const nextGameState = readOverlayState<AmongUsState>(OVERLAY_STATE_KEYS.gameState);
+				if (nextGameState) {
+					setGameState(nextGameState);
+				}
+				return;
+			}
+
+			if (event.key === OVERLAY_STATE_KEYS.voiceState) {
+				const nextVoiceState = readOverlayState<VoiceState>(OVERLAY_STATE_KEYS.voiceState);
+				if (nextVoiceState) {
+					setVoiceState(nextVoiceState);
+				}
+				return;
+			}
+
+			if (event.key === OVERLAY_STATE_KEYS.settings) {
+				const nextSettings = readOverlayState<ISettings>(OVERLAY_STATE_KEYS.settings);
+				if (nextSettings) {
+					setSettings(nextSettings);
+				}
+				return;
+			}
+
+			if (event.key === OVERLAY_STATE_KEYS.playerColors) {
+				const nextPlayerColors = readOverlayState<string[][]>(OVERLAY_STATE_KEYS.playerColors);
+				if (nextPlayerColors) {
+					setColors(nextPlayerColors);
+				}
+			}
+		};
+
+		bridge.on(IpcOverlayMessages.NOTIFY_GAME_STATE_CHANGED, onState);
+		bridge.on(IpcOverlayMessages.NOTIFY_VOICE_STATE_CHANGED, onVoiceState);
+		bridge.on(IpcOverlayMessages.NOTIFY_SETTINGS_CHANGED, onSettings);
+		bridge.on(IpcOverlayMessages.NOTIFY_PLAYERCOLORS_CHANGED, onColorChange);
+		window.addEventListener('storage', onStorage);
+		requestInitValues();
+		const initInterval = window.setInterval(() => {
+			initRequests += 1;
+			requestInitValues();
+			if (initRequests >= 10) {
+				window.clearInterval(initInterval);
+			}
+		}, 300);
+
 		return () => {
-			ipcRenderer.off(IpcOverlayMessages.NOTIFY_GAME_STATE_CHANGED, onState);
-			ipcRenderer.off(IpcOverlayMessages.NOTIFY_VOICE_STATE_CHANGED, onVoiceState);
-			ipcRenderer.off(IpcOverlayMessages.NOTIFY_SETTINGS_CHANGED, onSettings);
-			ipcRenderer.on(IpcOverlayMessages.NOTIFY_PLAYERCOLORS_CHANGED, onColorChange);
+			window.clearInterval(initInterval);
+			window.removeEventListener('storage', onStorage);
+			bridge.off(IpcOverlayMessages.NOTIFY_GAME_STATE_CHANGED, onState);
+			bridge.off(IpcOverlayMessages.NOTIFY_VOICE_STATE_CHANGED, onVoiceState);
+			bridge.off(IpcOverlayMessages.NOTIFY_SETTINGS_CHANGED, onSettings);
+			bridge.off(IpcOverlayMessages.NOTIFY_PLAYERCOLORS_CHANGED, onColorChange);
 		};
 	}, []);
 
-	if (!settings || !voiceState || !gameState || !settings.enableOverlay || gameState.gameState == GameState.MENU)
+	if (
+		!settings ||
+		!voiceState ||
+		!gameState ||
+		!settings.enableOverlay ||
+		gameState.gameState == GameState.MENU ||
+		gameState.gameState == GameState.UNKNOWN
+	)
 		return null;
 	return (
 		<>
 			{settings.meetingOverlay && gameState.gameState === GameState.DISCUSSION && (
-				<MeetingHud gameState={gameState} voiceState={voiceState} playerColors={playerColors} />
+				<MeetingHud
+					gameState={gameState}
+					voiceState={voiceState}
+					playerColors={playerColors}
+					aleLuduMode={settings.aleLuduMode}
+				/>
 			)}
 			{settings.overlayPosition !== 'hidden' && (
 				<AvatarOverlay
@@ -115,6 +225,7 @@ const Overlay: React.FC = function () {
 					gameState={gameState}
 					position={settings.overlayPosition}
 					compactOverlay={settings.compactOverlay}
+					alwaysShowPlayers={settings.alwaysShowOverlayPlayers}
 				/>
 			)}
 		</>
@@ -126,6 +237,7 @@ interface AvatarOverlayProps {
 	gameState: AmongUsState;
 	position: ISettings['overlayPosition'];
 	compactOverlay: boolean;
+	alwaysShowPlayers: boolean;
 }
 
 const AvatarOverlay: React.FC<AvatarOverlayProps> = ({
@@ -133,9 +245,8 @@ const AvatarOverlay: React.FC<AvatarOverlayProps> = ({
 	gameState,
 	position,
 	compactOverlay,
+	alwaysShowPlayers,
 }: AvatarOverlayProps) => {
-	if (!gameState.players) return null;
-
 	const positionParse = position.replace('1', '');
 
 	const avatars: JSX.Element[] = [];
@@ -147,10 +258,10 @@ const AvatarOverlay: React.FC<AvatarOverlayProps> = ({
 	} else {
 		classnames.push('gamestate_game');
 		classnames.push('overlay_postion_' + positionParse);
-		if (compactOverlay || position === 'right1' || position === 'left1') {
+		if (compactOverlay || position === 'right1' || position === 'left1' || position === 'top') {
 			classnames.push('compactoverlay');
 		}
-		if (position === 'left1' || position === 'right1') {
+		if (position === 'left1' || position === 'right1' || position === 'top1') {
 			classnames.push('overlay_postion_' + position);
 		}
 	}
@@ -175,7 +286,9 @@ const AvatarOverlay: React.FC<AvatarOverlayProps> = ({
 			});
 
 		return playerss;
-	}, [gameState.players]);
+	}, [gameState.players, voiceState.localIsAlive, voiceState.otherDead]);
+
+	if (!players) return null;
 
 	// const myPLayer = useMemo(() => {
 	// 	if (!gameState.players) return null;
@@ -183,7 +296,12 @@ const AvatarOverlay: React.FC<AvatarOverlayProps> = ({
 	// }, [gameState.players]);
 
 	players?.forEach((player) => {
-		if (!voiceState.otherTalking[player.clientId] && !(player.isLocal && voiceState.localTalking) && compactOverlay) {
+		const talking =
+			!player.inVent && (voiceState.otherTalking[player.clientId] || (player.isLocal && voiceState.localTalking));
+		if (
+			!alwaysShowPlayers &&
+			!talking
+		) {
 			return;
 		}
 		const peer = voiceState.playerSocketIds[player.clientId];
@@ -191,8 +309,6 @@ const AvatarOverlay: React.FC<AvatarOverlayProps> = ({
 		if (!connected && !player.isLocal) {
 			return;
 		}
-		const talking =
-			!player.inVent && (voiceState.otherTalking[player.clientId] || (player.isLocal && voiceState.localTalking));
 		// const audio = voiceState.audioConnected[peer];
 		avatars.push(
 			<div key={player.id} className="player_wrapper">
@@ -249,9 +365,10 @@ interface MeetingHudProps {
 	gameState: AmongUsState;
 	voiceState: VoiceState;
 	playerColors: string[][];
+	aleLuduMode: boolean;
 }
 
-const MeetingHud: React.FC<MeetingHudProps> = ({ voiceState, gameState, playerColors }: MeetingHudProps) => {
+const MeetingHud: React.FC<MeetingHudProps> = ({ voiceState, gameState, playerColors, aleLuduMode }: MeetingHudProps) => {
 	const [windowWidth, windowheight] = useWindowSize();
 	const [width, height] = useMemo(() => {
 		if (gameState.oldMeetingHud) {
@@ -287,6 +404,7 @@ const MeetingHud: React.FC<MeetingHudProps> = ({ voiceState, gameState, playerCo
 		width: width,
 		height: height,
 		oldHud: gameState.oldMeetingHud,
+		aleLuduMode: !gameState.oldMeetingHud && aleLuduMode,
 	});
 	const players = useMemo(() => {
 		if (!gameState.players) return null;
@@ -300,7 +418,7 @@ const MeetingHud: React.FC<MeetingHudProps> = ({ voiceState, gameState, playerCo
 			}
 			return a.id - b.id;
 		});
-	}, [gameState.gameState]);
+	}, [gameState.players]);
 	if (!players || gameState.gameState !== GameState.DISCUSSION) return null;
 
 	const overlays = players.map((player) => {

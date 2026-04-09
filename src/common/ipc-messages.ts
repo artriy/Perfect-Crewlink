@@ -1,5 +1,3 @@
-import { ProgressInfo, UpdateInfo } from 'builder-util-runtime';
-
 // Renderer --> Main (send/on)
 export enum IpcMessages {
 	SHOW_ERROR_DIALOG = 'SHOW_ERROR_DIALOG',
@@ -45,6 +43,16 @@ export enum IpcRendererMessages {
 	IMPOSTOR_RADIO = 'IMPOSTOR_RADIO',
 	ERROR = 'ERROR',
 	AUTO_UPDATER_STATE = 'AUTO_UPDATER_STATE',
+}
+
+export interface ProgressInfo {
+	percent: number;
+	transferred: number;
+	total: number;
+}
+
+export interface UpdateInfo {
+	version: string;
 }
 
 export interface AutoUpdaterState {

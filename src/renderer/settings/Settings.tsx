@@ -6,7 +6,6 @@ import { ISettings, ILobbySettings } from '../../common/ISettings';
 import makeStyles from '@mui/styles/makeStyles';
 import withStyles from '@mui/styles/withStyles';
 import {
-	Grid,
 	RadioGroup,
 	Checkbox,
 	FormControlLabel,
@@ -16,12 +15,14 @@ import {
 	Button,
 	Radio,
 } from '@mui/material';
+import Grid from '@mui/material/GridLegacy';
 import { DialogContent, DialogContentText, DialogActions, DialogTitle, Slider, Tooltip } from '@mui/material';
 import { Dialog, TextField } from '@mui/material';
 import ChevronLeft from '@mui/icons-material/ArrowBack';
 import Alert from '@mui/material/Alert';
 import { GameState } from '../../common/AmongUsState';
-import { ipcRenderer } from 'electron';
+import { getSystemLocale } from '../../common/tauri-system';
+import { bridge } from '../bridge';
 import { IpcHandlerMessages } from '../../common/ipc-messages';
 import i18next, { TFunction } from 'i18next';
 import languages from '../language/languages';
@@ -176,6 +177,12 @@ const Settings: React.FC<SettingsProps> = function ({ t, open, onClose }: Settin
 	// Used to buffer changes that are only sent out on settings close
 	const [localLobbySettingsBuffer, setLocalLobbySettingsBuffer] = useState(settings.localLobbySettings);
 	const updateLocalLobbySettingsBuffer = (newValues: Partial<ILobbySettings>) => setLocalLobbySettingsBuffer((oldState) => { return { ...oldState, ...newValues } });
+	const applyLobbySettings = useCallback((newValues: Partial<ILobbySettings>) => {
+		updateLocalLobbySettingsBuffer(newValues);
+		for (const [setting, value] of Object.entries(newValues) as [keyof ILobbySettings, ILobbySettings[keyof ILobbySettings]][]) {
+			setLobbySettings(setting, value);
+		}
+	}, []);
 
 	useEffect(() => {
 		setUnsavedCount((s) => s + 1);
@@ -195,12 +202,8 @@ const Settings: React.FC<SettingsProps> = function ({ t, open, onClose }: Settin
 	]);
 
 	useEffect(() => {
-		ipcRenderer.send('setAlwaysOnTop', settings.alwaysOnTop);
+		bridge.send('setAlwaysOnTop', settings.alwaysOnTop);
 	}, [settings.alwaysOnTop]);
-
-	useEffect(() => {
-		ipcRenderer.send('enableOverlay', settings.enableOverlay);
-	}, [settings.enableOverlay]);
 
 	const [devices, setDevices] = useState<MediaDevice[]>([]);
 	const [_, updateDevices] = useReducer((state) => state + 1, 0);
@@ -246,7 +249,7 @@ const Settings: React.FC<SettingsProps> = function ({ t, open, onClose }: Settin
 			}
 			setSettings(shortcut, k);
 
-			ipcRenderer.send(IpcHandlerMessages.RESET_KEYHOOKS);
+			bridge.send(IpcHandlerMessages.RESET_KEYHOOKS);
 		}
 	};
 
@@ -256,14 +259,14 @@ const Settings: React.FC<SettingsProps> = function ({ t, open, onClose }: Settin
 			// React Mouse event starts at 0, but IOHooks starts at 1
 			const k = `MouseButton${ev.button + 1}`;
 			setSettings(shortcut, k);
-			ipcRenderer.send(IpcHandlerMessages.RESET_KEYHOOKS);
+			bridge.send(IpcHandlerMessages.RESET_KEYHOOKS);
 		}
 	};
 
 	const resetDefaults = () => {
 		SettingsStore.clear();
 		// This is necessary for resetting hotkeys properly, the main thread needs to be notified to reset the hooks
-		ipcRenderer.send(IpcHandlerMessages.RESET_KEYHOOKS);
+		bridge.send(IpcHandlerMessages.RESET_KEYHOOKS);
 
 		location.reload();
 	};
@@ -275,7 +278,7 @@ const Settings: React.FC<SettingsProps> = function ({ t, open, onClose }: Settin
 		(async () => {
 			console.log(settings.language);
 			if (settings.language === 'unkown') {
-				const locale: string = await ipcRenderer.invoke("getlocale");
+				const locale: string = await getSystemLocale();
 				const lang = Object.keys(languages).includes(locale)
 					? locale
 					: Object.keys(languages).includes(locale.split('-')[0])
@@ -326,11 +329,9 @@ const Settings: React.FC<SettingsProps> = function ({ t, open, onClose }: Settin
 	}, []);
 
 	const SavePublicLobbyCallback = useCallback(<K extends keyof ILobbySettings>(setting: K, newValue: ILobbySettings[K]) => {
-		// We want lobby browser related settings to save on Submit button click
-		setLobbySettings(setting, newValue);
 		const newSetting: Partial<ILobbySettings> = {};
 		newSetting[setting] = newValue;
-		updateLocalLobbySettingsBuffer(newSetting);
+		applyLobbySettings(newSetting);
 	}, []);
 
 	if (!open) { return <></> }
@@ -396,7 +397,7 @@ const Settings: React.FC<SettingsProps> = function ({ t, open, onClose }: Settin
 							min={1}
 							max={10}
 							step={0.1}
-							onChange={(_, newValue: number | number[]) => updateLocalLobbySettingsBuffer({ maxDistance: newValue as number })}
+							onChange={(_, newValue: number | number[]) => applyLobbySettings({ maxDistance: newValue as number })}
 						/>
 					</DisabledTooltip>
 				</div>
@@ -413,7 +414,7 @@ const Settings: React.FC<SettingsProps> = function ({ t, open, onClose }: Settin
 								openWarningDialog(
 									t('settings.warning'),
 									t('settings.lobbysettings.public_lobby.enable_warning'),
-									() => { updateLocalLobbySettingsBuffer({ publicLobby_on: newValue }) },
+									() => applyLobbySettings({ publicLobby_on: newValue }),
 									!localLobbySettingsBuffer.publicLobby_on
 								);
 							}}
@@ -444,7 +445,7 @@ const Settings: React.FC<SettingsProps> = function ({ t, open, onClose }: Settin
 							className={classes.formLabel}
 							label={t('settings.lobbysettings.wallsblockaudio')}
 							disabled={!canChangeLobbySettings}
-							onChange={(_, newValue: boolean) => updateLocalLobbySettingsBuffer({ wallsBlockAudio: newValue })}
+							onChange={(_, newValue: boolean) => applyLobbySettings({ wallsBlockAudio: newValue })}
 							value={canChangeLobbySettings ? localLobbySettingsBuffer.wallsBlockAudio : hostLobbySettings.wallsBlockAudio}
 							checked={canChangeLobbySettings ? localLobbySettingsBuffer.wallsBlockAudio : hostLobbySettings.wallsBlockAudio}
 							control={<Checkbox />}
@@ -458,7 +459,7 @@ const Settings: React.FC<SettingsProps> = function ({ t, open, onClose }: Settin
 							className={classes.formLabel}
 							label={t('settings.lobbysettings.visiononly')}
 							disabled={!canChangeLobbySettings}
-							onChange={(_, newValue: boolean) => updateLocalLobbySettingsBuffer({ visionHearing: newValue })}
+							onChange={(_, newValue: boolean) => applyLobbySettings({ visionHearing: newValue })}
 							value={canChangeLobbySettings ? localLobbySettingsBuffer.visionHearing : hostLobbySettings.visionHearing}
 							checked={canChangeLobbySettings ? localLobbySettingsBuffer.visionHearing : hostLobbySettings.visionHearing}
 							control={<Checkbox />}
@@ -472,7 +473,7 @@ const Settings: React.FC<SettingsProps> = function ({ t, open, onClose }: Settin
 							className={classes.formLabel}
 							label={t('settings.lobbysettings.impostorshearsghost')}
 							disabled={!canChangeLobbySettings}
-							onChange={(_, newValue: boolean) => updateLocalLobbySettingsBuffer({ haunting: newValue })}
+							onChange={(_, newValue: boolean) => applyLobbySettings({ haunting: newValue })}
 							value={canChangeLobbySettings ? localLobbySettingsBuffer.haunting : hostLobbySettings.haunting}
 							checked={canChangeLobbySettings ? localLobbySettingsBuffer.haunting : hostLobbySettings.haunting}
 							control={<Checkbox />}
@@ -487,7 +488,7 @@ const Settings: React.FC<SettingsProps> = function ({ t, open, onClose }: Settin
 							className={classes.formLabel}
 							label={t('settings.lobbysettings.hear_imposters_invents')}
 							disabled={!canChangeLobbySettings}
-							onChange={(_, newValue: boolean) => updateLocalLobbySettingsBuffer({ hearImpostorsInVents: newValue })}
+							onChange={(_, newValue: boolean) => applyLobbySettings({ hearImpostorsInVents: newValue })}
 							value={
 								canChangeLobbySettings ? localLobbySettingsBuffer.hearImpostorsInVents : hostLobbySettings.hearImpostorsInVents
 							}
@@ -505,7 +506,7 @@ const Settings: React.FC<SettingsProps> = function ({ t, open, onClose }: Settin
 							className={classes.formLabel}
 							label={t('settings.lobbysettings.private_talk_invents')}
 							disabled={!canChangeLobbySettings}
-							onChange={(_, newValue: boolean) => updateLocalLobbySettingsBuffer({ impostersHearImpostersInvent: newValue })}
+							onChange={(_, newValue: boolean) => applyLobbySettings({ impostersHearImpostersInvent: newValue })}
 							value={
 								canChangeLobbySettings
 									? localLobbySettingsBuffer.impostersHearImpostersInvent
@@ -528,7 +529,7 @@ const Settings: React.FC<SettingsProps> = function ({ t, open, onClose }: Settin
 							className={classes.formLabel}
 							label={t('settings.lobbysettings.comms_sabotage_audio')}
 							disabled={!canChangeLobbySettings}
-							onChange={(_, newValue: boolean) => updateLocalLobbySettingsBuffer({ commsSabotage: newValue })}
+							onChange={(_, newValue: boolean) => applyLobbySettings({ commsSabotage: newValue })}
 							value={canChangeLobbySettings ? localLobbySettingsBuffer.commsSabotage : hostLobbySettings.commsSabotage}
 							checked={canChangeLobbySettings ? localLobbySettingsBuffer.commsSabotage : hostLobbySettings.commsSabotage}
 							control={<Checkbox />}
@@ -542,7 +543,7 @@ const Settings: React.FC<SettingsProps> = function ({ t, open, onClose }: Settin
 							className={classes.formLabel}
 							label={t('settings.lobbysettings.hear_through_cameras')}
 							disabled={!canChangeLobbySettings}
-							onChange={(_, newValue: boolean) => updateLocalLobbySettingsBuffer({ hearThroughCameras: newValue })}
+							onChange={(_, newValue: boolean) => applyLobbySettings({ hearThroughCameras: newValue })}
 							value={canChangeLobbySettings ? localLobbySettingsBuffer.hearThroughCameras : hostLobbySettings.hearThroughCameras}
 							checked={
 								canChangeLobbySettings ? localLobbySettingsBuffer.hearThroughCameras : hostLobbySettings.hearThroughCameras
@@ -558,7 +559,7 @@ const Settings: React.FC<SettingsProps> = function ({ t, open, onClose }: Settin
 							className={classes.formLabel}
 							label={t('settings.lobbysettings.impostor_radio')}
 							disabled={!canChangeLobbySettings}
-							onChange={(_, newValue: boolean) => updateLocalLobbySettingsBuffer({ impostorRadioEnabled: newValue })}
+							onChange={(_, newValue: boolean) => applyLobbySettings({ impostorRadioEnabled: newValue })}
 							value={
 								canChangeLobbySettings ? localLobbySettingsBuffer.impostorRadioEnabled : hostLobbySettings.impostorRadioEnabled
 							}
@@ -581,7 +582,7 @@ const Settings: React.FC<SettingsProps> = function ({ t, open, onClose }: Settin
 								openWarningDialog(
 									t('settings.warning'),
 									t('settings.lobbysettings.ghost_only_warning'),
-									() => updateLocalLobbySettingsBuffer({ meetingGhostOnly: false, deadOnly: newValue }),
+									() => applyLobbySettings({ meetingGhostOnly: false, deadOnly: newValue }),
 									newValue
 								);
 							}}
@@ -603,7 +604,7 @@ const Settings: React.FC<SettingsProps> = function ({ t, open, onClose }: Settin
 								openWarningDialog(
 									t('settings.warning'),
 									t('settings.lobbysettings.meetings_only_warning'),
-									() => updateLocalLobbySettingsBuffer({ meetingGhostOnly: newValue, deadOnly: false }),
+									() => applyLobbySettings({ meetingGhostOnly: newValue, deadOnly: false }),
 									newValue
 								);
 							}}
@@ -895,9 +896,23 @@ const Settings: React.FC<SettingsProps> = function ({ t, open, onClose }: Settin
 							/>
 							<FormControlLabel
 								className={classes.formLabel}
+								label={t('settings.overlay.show_all_players')}
+								checked={settings.alwaysShowOverlayPlayers}
+								onChange={(_, checked: boolean) => setSettings('alwaysShowOverlayPlayers', checked)}
+								control={<Checkbox />}
+							/>
+							<FormControlLabel
+								className={classes.formLabel}
 								label={t('settings.overlay.meeting')}
 								checked={settings.meetingOverlay}
 								onChange={(_, checked: boolean) => setSettings('meetingOverlay', checked)}
+								control={<Checkbox />}
+							/>
+							<FormControlLabel
+								className={classes.formLabel}
+								label={t('settings.overlay.aleludu_mode')}
+								checked={settings.aleLuduMode}
+								onChange={(_, checked: boolean) => setSettings('aleLuduMode', checked)}
 								control={<Checkbox />}
 							/>
 							<TextField
@@ -915,6 +930,7 @@ const Settings: React.FC<SettingsProps> = function ({ t, open, onClose }: Settin
 							>
 								<option value="hidden">{t('settings.overlay.locations.hidden')}</option>
 								<option value="top">{t('settings.overlay.locations.top')}</option>
+								<option value="top1">{t('settings.overlay.locations.top1')}</option>
 								<option value="bottom_left">{t('settings.overlay.locations.bottom')}</option>
 								<option value="right">{t('settings.overlay.locations.right')}</option>
 								<option value="right1">{t('settings.overlay.locations.right1')}</option>
@@ -981,7 +997,7 @@ const Settings: React.FC<SettingsProps> = function ({ t, open, onClose }: Settin
 								t('settings.beta.hardware_acceleration_warning'),
 								() => {
 									setSettings('hardware_acceleration', checked);
-									ipcRenderer.send("relaunch");
+									bridge.send("relaunch");
 								},
 								!checked
 							);

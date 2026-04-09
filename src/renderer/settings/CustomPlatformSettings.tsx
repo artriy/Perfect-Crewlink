@@ -14,9 +14,8 @@ import {
 import makeStyles from '@mui/styles/makeStyles';
 import React, { useMemo, useState, useEffect, useContext } from 'react';
 import ChevronLeft from '@mui/icons-material/ArrowBack';
+import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import { GamePlatformInstance, PlatformRunType } from '../../common/GamePlatform';
-import path from 'path';
-import { platform } from 'process';
 import { SettingsContext } from '../contexts';
 
 const useStyles = makeStyles((theme) => ({
@@ -51,13 +50,39 @@ export interface CustomPlatformSettingProps {
 	editPlatform?: GamePlatformInstance;
 }
 
+function normalizePath(input: string): string {
+	return input.replace(/\\/g, '/');
+}
+
+function parseExecutablePath(input: string): { dir: string; base: string } | null {
+	const normalized = normalizePath(input).trim();
+	if (!normalized) {
+		return null;
+	}
+	const lastSlash = normalized.lastIndexOf('/');
+	if (lastSlash < 0) {
+		return { dir: '', base: normalized };
+	}
+	return {
+		dir: normalized.slice(0, lastSlash),
+		base: normalized.slice(lastSlash + 1),
+	};
+}
+
+function joinExecutablePath(dir: string, base: string): string {
+	if (!dir) {
+		return base;
+	}
+	return `${normalizePath(dir).replace(/\/$/, '')}/${base}`;
+}
+
 export const CustomPlatformSettings: React.FC<CustomPlatformSettingProps> = function ({
 	t,
 	open,
 	setOpenState,
 	editPlatform,
 }: CustomPlatformSettingProps) {
-	const desktopPlatform = platform;
+	const desktopPlatform = navigator.userAgent.includes('Windows') ? 'win32' : 'linux';
 
 	const classes = useStyles();
 	const [settings, setSettings] = useContext(SettingsContext);
@@ -92,7 +117,7 @@ export const CustomPlatformSettings: React.FC<CustomPlatformSettingProps> = func
 
 	const setPlatformRun = (pathsString: string) => {
 		if (customPlatform.launchType === PlatformRunType.EXE) {
-			const exe = path.parse(pathsString);
+			const exe = parseExecutablePath(pathsString);
 			if (exe) {
 				setCustomPlatform((prevState) => ({
 					...prevState,
@@ -121,9 +146,10 @@ export const CustomPlatformSettings: React.FC<CustomPlatformSettingProps> = func
 	// Delete and re-add platform if we're editing
 	const saveCustomPlatform = () => {
 		if (editPlatform && settings.customPlatforms[editPlatform.key]) {
-			const { [editPlatform.key]: remove, ...rest } = settings.customPlatforms;
+			const nextPlatforms = { ...settings.customPlatforms };
+			delete nextPlatforms[editPlatform.key];
 			setSettings('customPlatforms', {
-				...rest, 
+				...nextPlatforms,
 				[customPlatform.key]: customPlatform,
 			});
 		} else {
@@ -135,8 +161,9 @@ export const CustomPlatformSettings: React.FC<CustomPlatformSettingProps> = func
 	};
 
 	const deleteCustomPlatform = () => {
-		const { [customPlatform.key]: remove, ...rest } = settings.customPlatforms;
-		setSettings('customPlatforms', rest);
+		const nextPlatforms = { ...settings.customPlatforms };
+		delete nextPlatforms[customPlatform.key];
+		setSettings('customPlatforms', nextPlatforms);
 	};
 
 	const runInputs = useMemo(() => {
@@ -146,25 +173,25 @@ export const CustomPlatformSettings: React.FC<CustomPlatformSettingProps> = func
 					<TextField
 						fullWidth
 						label={t('settings.customplatforms.path')}
-						value={customPlatform.execute[0] ? path.join(customPlatform.runPath, customPlatform.execute[0]) : ''}
+						value={customPlatform.execute[0] ? joinExecutablePath(customPlatform.runPath, customPlatform.execute[0]) : ''}
 						variant="outlined"
 						color="primary"
 						disabled={true}
 					/>
-					<Button variant="contained" component="label">
+					<Button
+						variant="contained"
+						onClick={async () => {
+							const selected = await openDialog({
+								directory: false,
+								multiple: false,
+								filters: desktopPlatform === 'win32' ? [{ name: 'Executable', extensions: ['exe'] }] : undefined,
+							});
+							if (typeof selected === 'string') {
+								setPlatformRun(selected);
+							}
+						}}
+					>
 						{t('buttons.file_select')}
-						<input
-							accept={desktopPlatform === 'win32' ? '.exe' : '*'}
-							type="file"
-							hidden
-							onChange={(ev) => {
-								if (ev.target.files && ev.target.files.length > 0) {
-									setPlatformRun(ev.target.files[0].path);
-								} else {
-									setPlatformRun('');
-								}
-							}}
-						/>
 					</Button>
 					<FormControlLabel
 						control={

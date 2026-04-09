@@ -14,9 +14,11 @@ export interface ISettings {
 	hideCode: boolean;
 	natFix: boolean;
 	compactOverlay: boolean;
+	alwaysShowOverlayPlayers: boolean;
 	overlayPosition: string;
 	enableOverlay: boolean;
 	meetingOverlay: boolean;
+	aleLuduMode: boolean;
 
 	localLobbySettings: ILobbySettings;
 	ghostVolumeAsImpostor: number;

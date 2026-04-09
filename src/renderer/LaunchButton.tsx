@@ -1,15 +1,15 @@
-import { ipcRenderer } from 'electron';
 import React, { useContext, useEffect, useRef, useState } from 'react';
+import { bridge } from './bridge';
 import { GamePlatformInstance, GamePlatformMap } from '../common/GamePlatform';
+import { getAvailablePlatforms } from '../common/tauri-platforms';
 import { SettingsContext } from './contexts';
 import makeStyles from '@mui/styles/makeStyles';
-import { IpcMessages } from '../common/ipc-messages';
 import { Button, ClickAwayListener, MenuItem, MenuList, Paper, Popper } from '@mui/material';
 import { ToggleButton } from '@mui/material';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import { CustomPlatformSettings } from './settings/CustomPlatformSettings';
 
-const useStyles = makeStyles((theme) => ({
+const useStyles = makeStyles(() => ({
 	button_group: {
 		display: 'inline-flex',
 		margin: '0px 10px',
@@ -77,11 +77,9 @@ const LaunchButton: React.FC<LauncherProps> = function ({ t }: LauncherProps) {
 
 	// Grab available platforms from main thread
 	useEffect(() => {
-		ipcRenderer
-			.invoke(IpcMessages.REQUEST_PLATFORMS_AVAILABLE, settings.customPlatforms)
-			.then((result: GamePlatformMap) => {
-				setLaunchPlatforms(result);
-			});
+		getAvailablePlatforms(settings.customPlatforms).then((result: GamePlatformMap) => {
+			setLaunchPlatforms(result);
+		});
 	}, [settings.customPlatforms]);
 
 	// If launchPlatformSettings changes: select the first available platform and re-compute list of platforms
@@ -158,7 +156,7 @@ const LaunchButton: React.FC<LauncherProps> = function ({ t }: LauncherProps) {
 					className={classes.button_primary}
 					disabled={launchItemList.length === 1}
 					onClick={() => {
-						ipcRenderer.send(IpcMessages.OPEN_AMONG_US_GAME, launchPlatforms![settings.launchPlatform]);
+						bridge.send('OPEN_AMONG_US_GAME', launchPlatforms![settings.launchPlatform]);
 					}}
 				>
 					{openMessage}
