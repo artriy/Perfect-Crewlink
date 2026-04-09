@@ -1101,9 +1101,8 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 
 			setConnect({ connect });
 
-			function createPeerConnection(peer: string, initiator: boolean, client: Client) {
+			function createPeerConnection(peer: string, initiator: boolean) {
 				console.log('CreatePeerConnection: ', peer, initiator);
-				disconnectClient(client);
 				const connection = new Peer({
 					stream,
 					initiator, // @ts-ignore-line
@@ -1215,21 +1214,19 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 					console.log('Disconnected from', peer, 'Initiator:', initiator);
 					disconnectPeer(peer);
 				});
-				connection.on('error', () => {
-					console.log('ONERROR');
-					/*empty*/
+				connection.on('error', (err) => {
+					console.error('Peer connection error with', peer, ':', err);
 				});
 				return connection;
 			}
 
 			socket.on('join', async (peer: string, client: Client) => {
-				createPeerConnection(peer, true, client);
+				createPeerConnection(peer, true);
 				setSocketClients((old) => ({ ...old, [peer]: client }));
 			});
 
-			socket.on('signal', ({ data, from, client }: { data: Peer.SignalData; from: string, client: Client }) => {
+			socket.on('signal', ({ data, from }: { data: Peer.SignalData; from: string }) => {
 				if (Object.prototype.hasOwnProperty.call(data, 'mobilePlayerInfo')) {
-					// eslint-disable-line
 					const mobiledata = data as unknown as mobileHostInfo;
 					if (
 						mobiledata.mobilePlayerInfo.code === hostRef.current.code &&
@@ -1240,19 +1237,14 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 					}
 					return;
 				}
-				if (client) {
-					socketClientsRef.current = { ...socketClientsRef.current, [from]: client };
-					setSocketClients((old) => ({ ...old, [from]: client }));
-				}
+
 				let connection: Peer.Instance;
-				if (Object.prototype.hasOwnProperty.call(data, 'type')) {
-					if (peerConnections[from] && data.type !== 'offer') {
-						connection = peerConnections[from];
-					} else {
-						connection = createPeerConnection(from, false, client);
-					}
-					connection.signal(data);
+				if (peerConnections[from]) {
+					connection = peerConnections[from];
+				} else {
+					connection = createPeerConnection(from, false);
 				}
+				connection.signal(data);
 			});
 		},
 		(error) => {
@@ -1392,7 +1384,7 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 			(gameState.oldGameState === GameState.DISCUSSION || gameState.oldGameState === GameState.TASKS)
 		) {
 			hostRef.current.mobileRunning = false;
-			connect.connect(gameState.lobbyCode, myPlayer.clientId, gameState.clientId, resolvedIsHost);
+			connect.connect(gameState.lobbyCode, myPlayer.id, gameState.clientId, resolvedIsHost);
 		} else if (
 			gameState.oldGameState !== GameState.UNKNOWN &&
 			gameState.oldGameState !== GameState.MENU &&
