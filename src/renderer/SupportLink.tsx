@@ -1,4 +1,3 @@
-import Link from '@mui/material/Link';
 import Typography from '@mui/material/Typography';
 import React from 'react';
 import makeStyles from '@mui/styles/makeStyles';
@@ -31,10 +30,6 @@ const SupportLink: React.FC = function () {
 
 	return (
 		<Typography align="center">
-			Need help?&nbsp;
-			<Link href="#" color="secondary" onClick={() => bridge.openExternal('https://github.com/artriy/Perfect-Crewlink/issues')}>
-				Get support
-			</Link>
 			<button className={classes.button} onClick={onRefreshClick}>
 				Reload
 			</button>

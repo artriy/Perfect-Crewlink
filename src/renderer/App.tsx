@@ -32,6 +32,7 @@ import { CameraLocation, MapType } from '../common/AmongusMap';
 import { DEFAULT_PLAYERCOLORS } from '../common/playerColors';
 import { OVERLAY_STATE_KEYS, writeOverlayState } from '../common/overlay-state';
 import { getInitialGameState, getPlayerColors, startGameSession } from '../common/tauri-game';
+import { getAppVersion, getInitialAppVersion } from '../common/appVersion';
 import { ISettings } from '../common/ISettings';
 import { bridge } from './bridge';
 import theme from './theme';
@@ -78,13 +79,6 @@ declare module '@mui/styles/defaultTheme' {
 	interface DefaultTheme extends Theme {}
 }
 
-let appVersion = '';
-if (typeof window !== 'undefined' && window.location) {
-	const query = new URLSearchParams(window.location.search.substring(1));
-	const version = query.get('version');
-	appVersion = version ? ` v${version}` : '';
-}
-
 const useStyles = makeStyles(() => ({
 	root: {
 		position: 'absolute',
@@ -113,16 +107,17 @@ const useStyles = makeStyles(() => ({
 }));
 
 interface TitleBarProps {
+	appVersion: string;
 	settingsOpen: boolean;
 	setSettingsOpen: Dispatch<SetStateAction<boolean>>;
 }
 
-const RawTitleBar: React.FC<TitleBarProps> = function ({ settingsOpen, setSettingsOpen }: TitleBarProps) {
+const RawTitleBar: React.FC<TitleBarProps> = function ({ appVersion, settingsOpen, setSettingsOpen }: TitleBarProps) {
 	const classes = useStyles();
 	return (
 		<div className={classes.root}>
 			<span className={classes.title} style={{ marginLeft: 10 }}>
-				Perfect Crewlink{appVersion}
+				Perfect Crewlink{appVersion ? ` v${appVersion}` : ''}
 			</span>
 			<IconButton className={classes.button} style={{ left: 0 }} size="small" onClick={() => setSettingsOpen(!settingsOpen)}>
 				<SettingsIcon htmlColor="#777" />
@@ -175,6 +170,7 @@ function shouldRenderOverlayWindow(
 export default function App(): JSX.Element {
 	const { t } = useTranslation();
 	const [state, setState] = useState<AppState>(AppState.MENU);
+	const [appVersion, setAppVersion] = useState(getInitialAppVersion());
 	const [gameState, setGameState] = useState<AmongUsState>(EMPTY_GAME_STATE);
 	const [settingsOpen, setSettingsOpen] = useState(false);
 	const [diaOpen, setDiaOpen] = useState(true);
@@ -198,6 +194,19 @@ export default function App(): JSX.Element {
 		bridge.send(IpcMessages.SEND_TO_OVERLAY, IpcOverlayMessages.NOTIFY_SETTINGS_CHANGED, settingsRef.current);
 		bridge.send(IpcMessages.SEND_TO_OVERLAY, IpcOverlayMessages.NOTIFY_GAME_STATE_CHANGED, gameStateRef.current);
 	};
+
+	useEffect(() => {
+		let isMounted = true;
+		void getAppVersion().then((version) => {
+			if (isMounted) {
+				setAppVersion(version);
+			}
+		});
+
+		return () => {
+			isMounted = false;
+		};
+	}, []);
 
 	useEffect(() => {
 		if (mainWindowShown.current) {
@@ -400,7 +409,7 @@ export default function App(): JSX.Element {
 						<StyledEngineProvider injectFirst>
 							<ThemeProvider theme={theme}>
 								<LegacyThemeProvider theme={theme}>
-									<TitleBar settingsOpen={settingsOpen} setSettingsOpen={setSettingsOpen} />
+									<TitleBar appVersion={appVersion} settingsOpen={settingsOpen} setSettingsOpen={setSettingsOpen} />
 									{settingsOpen ? (
 										<Suspense fallback={null}>
 											<Settings t={t} open={settingsOpen} onClose={() => setSettingsOpen(false)} />

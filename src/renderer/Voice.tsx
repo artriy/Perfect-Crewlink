@@ -1612,7 +1612,7 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 					</Grid>
 				)}
 			</>)}
-			{otherPlayers.length <= 6 && <Footer />}
+			<Footer />
 		</div>
 	);
 };
