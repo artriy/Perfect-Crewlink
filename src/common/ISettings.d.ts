@@ -15,6 +15,7 @@ export interface ISettings {
 	natFix: boolean;
 	compactOverlay: boolean;
 	alwaysShowOverlayPlayers: boolean;
+	ignoreIncompatibleLobbyBrowserMods: boolean;
 	overlayPosition: string;
 	enableOverlay: boolean;
 	meetingOverlay: boolean;

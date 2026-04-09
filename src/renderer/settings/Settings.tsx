@@ -956,6 +956,13 @@ const Settings: React.FC<SettingsProps> = function ({ t, open, onClose }: Settin
 						}}
 						control={<Checkbox />}
 					/>
+					<FormControlLabel
+						className={classes.formLabel}
+						label={t('settings.advanced.ignore_incompatible_lobby_browser_mods')}
+						checked={settings.ignoreIncompatibleLobbyBrowserMods}
+						onChange={(_, checked: boolean) => setSettings('ignoreIncompatibleLobbyBrowserMods', checked)}
+						control={<Checkbox />}
+					/>
 				</div>
 				<ServerURLInput
 					t={t}

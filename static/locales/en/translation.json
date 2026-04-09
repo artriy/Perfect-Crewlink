@@ -87,6 +87,7 @@
 			"advanced": {
 				"title": "Advanced",
 				"nat_fix": "NAT Fix",
+				"ignore_incompatible_lobby_browser_mods": "Ignore Incompatible Lobby Mods",
 				"nat_fix_warning": "This will FIX the NAT issues but will add a delay since it is using a server instead of Peer to Peer (P2P).",
 				"change_server": "Change Voice Server",
 				"voice_server": "Voice Server",

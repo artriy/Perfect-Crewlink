@@ -1240,11 +1240,11 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 					}
 					return;
 				}
-				let connection: Peer.Instance;
-				if (!socketClientsRef.current[from]) {
-					console.warn('SIGNAL FROM UNKOWN SOCKET..');
-					return;
+				if (client) {
+					socketClientsRef.current = { ...socketClientsRef.current, [from]: client };
+					setSocketClients((old) => ({ ...old, [from]: client }));
 				}
+				let connection: Peer.Instance;
 				if (Object.prototype.hasOwnProperty.call(data, 'type')) {
 					if (peerConnections[from] && data.type !== 'offer') {
 						connection = peerConnections[from];

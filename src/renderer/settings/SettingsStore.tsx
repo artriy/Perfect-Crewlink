@@ -27,6 +27,7 @@ const defaultSettings: ISettings = {
 	natFix: false,
 	compactOverlay: false,
 	alwaysShowOverlayPlayers: false,
+	ignoreIncompatibleLobbyBrowserMods: true,
 	overlayPosition: 'right',
 	enableOverlay: true,
 	meetingOverlay: true,

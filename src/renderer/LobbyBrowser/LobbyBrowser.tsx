@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import withStyles from '@mui/styles/withStyles';
 import makeStyles from '@mui/styles/makeStyles';
 import Table from '@mui/material/Table';
@@ -8,12 +8,13 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
-import Button from '@mui/material/Button';
 import { bridge } from '../bridge';
-import { IpcHandlerMessages, IpcMessages } from '../../common/ipc-messages';
+import { IpcMessages } from '../../common/ipc-messages';
 import io, { Socket } from 'socket.io-client';
 import i18next from 'i18next';
-import { Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Tooltip } from '@mui/material';
+import { IconButton, Tooltip } from '@mui/material';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import CheckIcon from '@mui/icons-material/Check';
 import languages from '../language/languages';
 import { PublicLobbyMap, PublicLobby } from '../../common/PublicLobby';
 import { modList, ModsType } from '../../common/Mods';
@@ -22,6 +23,7 @@ import SettingsStore from '../settings/SettingsStore';
 
 const serverUrl = SettingsStore.get('serverURL', 'https://bettercrewl.ink/');
 const language = SettingsStore.get('language', 'en');
+const SETTINGS_STORAGE_KEY = 'perfectcrewlink.settings';
 i18next.changeLanguage(language);
 
 const StyledTableCell = withStyles((theme) => ({
@@ -51,6 +53,42 @@ const useStyles = makeStyles({
 	},
 	container: {
 		maxHeight: '400px',
+	},
+	codeCell: {
+		display: 'flex',
+		alignItems: 'flex-start',
+		justifyContent: 'space-between',
+		gap: '8px',
+		minWidth: '185px',
+	},
+	codeContent: {
+		display: 'flex',
+		flexDirection: 'column',
+		alignItems: 'flex-start',
+		gap: '4px',
+	},
+	codeText: {
+		fontFamily: '"Source Code Pro", monospace',
+		fontSize: '18px',
+		fontWeight: 700,
+		letterSpacing: '0.08em',
+		lineHeight: 1,
+	},
+	codeTextLobby: {
+		color: '#ff496c',
+	},
+	codeTextInGame: {
+		color: '#8a8592',
+	},
+	codeRegion: {
+		fontSize: '11px',
+		color: '#8a8592',
+		textTransform: 'uppercase',
+		letterSpacing: '0.08em',
+	},
+	copyButton: {
+		padding: '4px',
+		marginTop: '-2px',
 	},
 });
 
@@ -87,6 +125,21 @@ function getModName(mod: string): string {
 	return modList.find((o) => o.id === mod)?.label || (mod ?? 'None')
 }
 
+function getServerLabel(server: string): string {
+	if (!server) {
+		return 'Unknown Region';
+	}
+
+	return servers[server] ?? server;
+}
+
+interface LobbyCodePreview {
+	code: string | null;
+	region: string;
+	available: boolean;
+	reason?: 'blocked_incompatible' | 'incompatible' | 'unavailable';
+}
+
 interface LobbyBrowserProps {
 	t: (key: string) => string;
 }
@@ -95,13 +148,30 @@ export default function LobbyBrowser({ t }: LobbyBrowserProps) {
 	const classes = useStyles();
 	const [publiclobbies, setPublicLobbies] = useState<PublicLobbyMap>({});
 	const [socket, setSocket] = useState<Socket | null>(null);
-	const [code, setCode] = useState('');
+	const [lobbyCodes, setLobbyCodes] = useState<Record<number, LobbyCodePreview>>({});
+	const [copiedLobbyId, setCopiedLobbyId] = useState<number | null>(null);
+	const [ignoreIncompatibleMods, setIgnoreIncompatibleMods] = useState(() =>
+		SettingsStore.get('ignoreIncompatibleLobbyBrowserMods', true)
+	);
 	const [, forceRender] = useState({});
+	const pendingCodeRequests = useRef<Set<number>>(new Set());
 
 	const [mod, setMod] = useState<ModsType>('NONE');
 	const languageNames = languages as Record<string, { name?: string }>;
 	
 	useEffect(() => {
+		const syncIgnoreIncompatibleMods = () =>
+			setIgnoreIncompatibleMods(SettingsStore.get('ignoreIncompatibleLobbyBrowserMods', true));
+
+		syncIgnoreIncompatibleMods();
+		const handleStorage = (event: StorageEvent) => {
+			if (!event.key || event.key === SETTINGS_STORAGE_KEY) {
+				syncIgnoreIncompatibleMods();
+			}
+		};
+
+		window.addEventListener('storage', handleStorage);
+
 		bridge.invoke(IpcMessages.REQUEST_MOD).then((mod: ModsType) => setMod(mod));
 
 		const s = io(serverUrl, {
@@ -127,16 +197,20 @@ export default function LobbyBrowser({ t }: LobbyBrowserProps) {
 				delete old[lobbyId];
 				return { ...old };
 			});
+			setLobbyCodes((old) => {
+				if (!(lobbyId in old)) {
+					return old;
+				}
+				const next = { ...old };
+				delete next[lobbyId];
+				return next;
+			});
+			pendingCodeRequests.current.delete(lobbyId);
 		});
 		s.on('connect', () => {
 			s.emit('lobbybrowser', true);
 		});
 
-		bridge.on(IpcHandlerMessages.JOIN_LOBBY_ERROR, (_event, code, server) => {
-			console.log('ERROR: ', code);
-			const serverCode = String(server);
-			setCode(`${String(code)}  ${servers[serverCode] ? `on region ${servers[serverCode]}` : `\n Custom Server: ${serverCode}`}`);
-		});
 		const secondPassed = setInterval(() => {
 			forceRender({});
 		}, 1000);
@@ -144,34 +218,114 @@ export default function LobbyBrowser({ t }: LobbyBrowserProps) {
 			s.emit('lobbybrowser', false);
 			s.close();
 			clearInterval(secondPassed);
+			pendingCodeRequests.current.clear();
+			window.removeEventListener('storage', handleStorage);
 		};
 	}, []);
+
+	useEffect(() => {
+		setLobbyCodes((old) => {
+			let changed = false;
+			const next = { ...old };
+
+			for (const lobby of Object.values(publiclobbies)) {
+				const isIncompatibleLobby = lobby.mods !== mod;
+				const existingPreview = next[lobby.id];
+
+				if (!ignoreIncompatibleMods && isIncompatibleLobby) {
+					pendingCodeRequests.current.delete(lobby.id);
+					if (existingPreview?.reason !== 'blocked_incompatible') {
+						next[lobby.id] = {
+							code: null,
+							region: getServerLabel(lobby.server),
+							available: false,
+							reason: 'blocked_incompatible',
+						};
+						changed = true;
+					}
+					continue;
+				}
+
+				if (existingPreview?.reason === 'blocked_incompatible') {
+					delete next[lobby.id];
+					changed = true;
+				}
+			}
+
+			return changed ? next : old;
+		});
+	}, [ignoreIncompatibleMods, mod, publiclobbies]);
+
+	useEffect(() => {
+		if (!socket) {
+			return;
+		}
+
+		for (const lobby of Object.values(publiclobbies)) {
+			if (!ignoreIncompatibleMods && lobby.mods !== mod) {
+				continue;
+			}
+
+			if (lobbyCodes[lobby.id] || pendingCodeRequests.current.has(lobby.id)) {
+				continue;
+			}
+
+			pendingCodeRequests.current.add(lobby.id);
+			socket.emit('join_lobby', lobby.id, (state: number, codeOrError: string, server: string) => {
+				pendingCodeRequests.current.delete(lobby.id);
+				const normalizedError = codeOrError.toLowerCase();
+				const reason =
+					state === 0 ? undefined : normalizedError.includes('incompatible') ? 'incompatible' : 'unavailable';
+				setLobbyCodes((old) => ({
+					...old,
+					[lobby.id]: {
+						code: state === 0 ? codeOrError : null,
+						region: getServerLabel(String(server || lobby.server)),
+						available: state === 0,
+						reason,
+					},
+				}));
+			});
+		}
+	}, [ignoreIncompatibleMods, lobbyCodes, mod, publiclobbies, socket]);
+
+	useEffect(() => {
+		if (copiedLobbyId === null) {
+			return;
+		}
+
+		const timeout = window.setTimeout(() => {
+			setCopiedLobbyId(null);
+		}, 1500);
+
+		return () => window.clearTimeout(timeout);
+	}, [copiedLobbyId]);
+
+	async function copyLobbyCode(code: string, lobbyId: number) {
+		try {
+			if (navigator.clipboard?.writeText) {
+				await navigator.clipboard.writeText(code);
+			} else {
+				const input = document.createElement('textarea');
+				input.value = code;
+				input.style.position = 'fixed';
+				input.style.opacity = '0';
+				document.body.appendChild(input);
+				input.focus();
+				input.select();
+				document.execCommand('copy');
+				document.body.removeChild(input);
+			}
+			setCopiedLobbyId(lobbyId);
+		} catch (error) {
+			console.error('Failed to copy lobby code', error);
+		}
+	}
 
 	return (
 		<div style={{ minHeight: '100vh', width: '100%', paddingTop: '15px', backgroundColor: '#25232a', boxSizing: 'border-box' }}>
 			<div style={{ minHeight: '500px', padding: '20px', backgroundColor: '#25232a', boxSizing: 'border-box' }}>
 				<b>{t('lobbybrowser.header')}</b>
-				<Dialog
-					open={code !== ''}
-					// TransitionComponent={Transition}
-					keepMounted
-					aria-labelledby="alert-dialog-slide-title"
-					aria-describedby="alert-dialog-slide-description"
-				>
-					<DialogTitle id="alert-dialog-slide-title">Lobby information</DialogTitle>
-					<DialogContent>
-						<DialogContentText id="alert-dialog-slide-description">
-							{code.split('\n').map((i, key) => {
-								return <div key={key}>{i}</div>;
-							})}
-						</DialogContentText>
-					</DialogContent>
-					<DialogActions>
-						<Button onClick={() => setCode('')} color="primary">
-							{t('buttons.close')}
-						</Button>
-					</DialogActions>
-				</Dialog>
 				<Paper style={{ backgroundColor: '#1d1a23' }}>
 					<TableContainer component={Paper} className={classes.container} style={{ backgroundColor: '#1d1a23' }}>
 						<Table className={classes.table} aria-label="customized table" stickyHeader>
@@ -183,14 +337,21 @@ export default function LobbyBrowser({ t }: LobbyBrowserProps) {
 									<StyledTableCell align="left">{t('lobbybrowser.list.mods')}</StyledTableCell>
 									<StyledTableCell align="left">{t('lobbybrowser.list.language')}</StyledTableCell>
 									<StyledTableCell align="left">Status</StyledTableCell>
-									{/* {t('lobbybrowser.list.staut')} */}
-									<StyledTableCell align="left"></StyledTableCell>
+									<StyledTableCell align="left">{t('lobbybrowser.code')}</StyledTableCell>
 								</TableRow>
 							</TableHead>
 							<TableBody>
 								{Object.values(publiclobbies)
 									.sort(sortLobbies)
-									.map((row: PublicLobby) => (
+									.map((row: PublicLobby) => {
+										const lobbyCodePreview = lobbyCodes[row.id];
+										const lobbyCode = lobbyCodePreview?.code;
+										const isLobbyCodeAvailable = lobbyCodePreview?.available ?? false;
+										const lobbyCodeLabel =
+											lobbyCode ??
+											(lobbyCodePreview?.reason?.includes('incompatible') ? 'INCOMPATIBLE' : lobbyCodePreview ? 'UNAVAILABLE' : '...');
+
+										return (
 										<StyledTableRow key={row.id}>
 											<StyledTableCell component="th" scope="row">
 												{row.title}
@@ -209,48 +370,46 @@ export default function LobbyBrowser({ t }: LobbyBrowserProps) {
 												{row.gameState === GameState.LOBBY ? 'Lobby' : 'In game'}{' '}
 												{row.stateTime && new Date(Date.now() - row.stateTime).toISOString().substr(14, 5)}
 											</StyledTableCell>
-											<StyledTableCell align="right">
-												<Tooltip
-													title={
-														row.gameState !== GameState.LOBBY ? t('lobbybrowser.code_tooltips.in_progress') :
-														row.max_players === row.current_players ? t('lobbybrowser.code_tooltips.full_lobby') :
-														row.mods != mod ? `${t('lobbybrowser.code_tooltips.incompatible')} '${getModName(mod)}' ${t('lobbybrowser.code_tooltips.and')} '${getModName(row.mods)}'` : ""
-													}
-												>
-													<span>
-														<Button
-															disabled={
-																row.gameState !== GameState.LOBBY ||
-																row.max_players === row.current_players ||
-																row.mods != mod
-															}
-															variant="contained"
-															color="secondary"
-															onClick={() => {
-																socket?.emit(
-																	'join_lobby',
-																	row.id,
-																	(state: number, codeOrError: string, server: string) => {
-																		if (state === 0) {
-																			setCode(`${t('lobbybrowser.code')}: ${codeOrError} \n Region: ${server}`);
-																			// ipcRenderer.send(IpcHandlerMessages.JOIN_LOBBY, codeOrError, server);
-																		} else {
-																			setCode(`Error: ${codeOrError}`);
-																		}
-																	}
-																);
-															}}
+											<StyledTableCell align="left">
+												<div className={classes.codeCell}>
+													<div className={classes.codeContent}>
+														<span
+															className={[
+																classes.codeText,
+																row.gameState === GameState.LOBBY ? classes.codeTextLobby : classes.codeTextInGame,
+															].join(' ')}
 														>
-															Show code
-														</Button>
-													</span>
-												</Tooltip>
-												{/* <Button variant="contained" color="secondary" style={{ marginLeft: '5px' }}>
-												report
-											</Button> */}
+															{lobbyCodeLabel}
+														</span>
+														<span className={classes.codeRegion}>
+															{lobbyCodePreview?.region ?? getServerLabel(row.server)}
+														</span>
+													</div>
+													<Tooltip title={copiedLobbyId === row.id ? 'Copied' : 'Copy code'}>
+														<span>
+															<IconButton
+																className={classes.copyButton}
+																size="small"
+																disabled={!isLobbyCodeAvailable || !lobbyCode}
+																onClick={() => {
+																	if (lobbyCode) {
+																		void copyLobbyCode(lobbyCode, row.id);
+																	}
+																}}
+															>
+																{copiedLobbyId === row.id ? (
+																	<CheckIcon htmlColor="#8fd694" fontSize="small" />
+																) : (
+																	<ContentCopyIcon htmlColor="#b7b1c0" fontSize="small" />
+																)}
+															</IconButton>
+														</span>
+													</Tooltip>
+												</div>
 											</StyledTableCell>
 										</StyledTableRow>
-									))}
+										);
+									})}
 							</TableBody>
 						</Table>
 					</TableContainer>
