@@ -11,7 +11,8 @@ support, public lobbies, and day-to-day usability.
 - Built the desktop client around **TypeScript + Vite**, **Tauri**, and **Rust**
 - Shipped dedicated `Perfect Crewlink` desktop branding, executable naming, installer naming,
   bundle ID, and repository identity
-- Prepared the repo and release flow to build and publish Windows and Linux desktop artifacts
+- Prepared the repo and release flow to publish Windows desktop artifacts while keeping Linux
+  supported through source builds
 
 ### Overlay and in-game behavior
 
@@ -58,7 +59,7 @@ support, public lobbies, and day-to-day usability.
 
 - Windows portable build: `perfectcrewlink.exe`
 - Windows installer: `Perfect.Crewlink_1.0.0_x64-setup.exe`
-- Linux AppImage: `Perfect.Crewlink_1.0.0_amd64.AppImage`
+- Linux supported through source builds documented in the README
 
 ### Notes
 

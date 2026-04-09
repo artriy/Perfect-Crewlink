@@ -15,6 +15,7 @@ import theme from '../theme';
 import LobbyBrowser from './LobbyBrowser';
 import { useTranslation } from 'react-i18next';
 import { bridge } from '../bridge';
+import Footer from '../Footer';
 
 
 declare module '@mui/styles/defaultTheme' {
@@ -102,6 +103,7 @@ export default function App(): JSX.Element {
                     <div className={classes.page}>
                         <TitleBar />
                         <LobbyBrowser t={t}></LobbyBrowser>
+                        <Footer />
                     </div>
                 </LegacyThemeProvider>
             </ThemeProvider>
