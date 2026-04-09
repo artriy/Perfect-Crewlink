@@ -6,6 +6,11 @@ concurrency:
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing release tag to attach assets to
+        required: false
+        type: string
   release:
     types: [published]
 
@@ -69,7 +74,7 @@ jobs:
         run: npm run tauri -- build
 
       - name: Upload workflow artifacts
-        if: ${{ github.event_name == 'workflow_dispatch' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag == '' }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
@@ -77,9 +82,10 @@ jobs:
           if-no-files-found: error
 
       - name: Attach release files
-        if: ${{ github.event_name == 'release' }}
+        if: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag != '') }}
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event.release.tag_name || github.event.inputs.release_tag }}
           files: ${{ matrix.upload_glob }}
           fail_on_unmatched_files: true
           overwrite_files: true
