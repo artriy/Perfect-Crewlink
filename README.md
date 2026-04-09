@@ -9,7 +9,6 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/artriy/Perfect-Crewlink/releases/latest"><img src="https://img.shields.io/github/v/release/artriy/Perfect-Crewlink?display_name=tag&label=release" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/TypeScript-Vite-3178C6?logo=typescript&logoColor=white" alt="TypeScript and Vite">
   <img src="https://img.shields.io/badge/Desktop-Tauri-24C8DB?logo=tauri&logoColor=white" alt="Tauri desktop shell">
   <img src="https://img.shields.io/badge/Native-Rust-000000?logo=rust&logoColor=white" alt="Rust native layer">
@@ -21,8 +20,6 @@ Perfect Crewlink is a full desktop fork of the BetterCrewLink lineage, rebuilt a
 **TypeScript + Vite**, **Tauri**, and **Rust**. It keeps the Among Us proximity chat experience
 people want, then upgrades the desktop client around it: faster startup, lower overhead, sharper
 window handling, cleaner overlays, stronger mod support, and better day-to-day quality.
-
-`v1.0.0` is the first full release of Perfect Crewlink.
 
 ## Why Perfect Crewlink
 
@@ -53,7 +50,7 @@ window handling, cleaner overlays, stronger mod support, and better day-to-day q
 | Customization | Overlay visibility modes, always-show-talking-player mode, compact/background variants, privacy toggles, and advanced audio/server settings |
 | Packaging | Windows portable exe and Windows installer releases, with Linux supported through source builds |
 
-## What Ships In v1.0.0
+## Core Capabilities
 
 - Full `Perfect Crewlink` branding across the repo, desktop app, installer, bundle ID, and release assets
 - Rewritten desktop stack using **TypeScript + Vite + Tauri + Rust**
@@ -83,9 +80,9 @@ Grab the latest release from:
 Release assets include:
 
 - `perfectcrewlink.exe`
-- `Perfect.Crewlink_1.0.0_x64-setup.exe`
+- `Perfect Crewlink x64 setup`
 
-Linux is supported, but `v1.0.0` ships GitHub release assets for Windows only. Linux builds are expected to come from source on a Linux machine.
+Linux is supported, but GitHub releases currently ship Windows assets only. Linux builds are expected to come from source on a Linux machine.
 
 ## Build From Source
 
@@ -115,11 +112,11 @@ npm run tauri -- build
 Typical outputs:
 
 - `src-tauri/target/release/perfectcrewlink.exe`
-- `src-tauri/target/release/bundle/nsis/Perfect Crewlink_1.0.0_x64-setup.exe`
+- `src-tauri/target/release/bundle/nsis/*.exe`
 
 ### Linux build guide
 
-Perfect Crewlink supports Linux builds, but the first release publishes Windows assets only. To build on Linux:
+Perfect Crewlink supports Linux builds. To build on Linux:
 
 ```bash
 sudo apt-get update
