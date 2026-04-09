@@ -15,7 +15,7 @@ compatibility and stability work around it.
 ## Local setup
 
 ```bash
-git clone https://github.com/LoMce/Perfect-Crewlink.git
+git clone https://github.com/artriy/Perfect-Crewlink.git
 cd Perfect-Crewlink
 npm ci
 ```
@@ -59,5 +59,5 @@ npm run tauri -- build
 
 ## Support
 
-- Bugs and feature requests: [GitHub Issues](https://github.com/LoMce/Perfect-Crewlink/issues)
+- Bugs and feature requests: [GitHub Issues](https://github.com/artriy/Perfect-Crewlink/issues)
 - Original upstream reference: [OhMyGuus/BetterCrewLink](https://github.com/OhMyGuus/BetterCrewLink)

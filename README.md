@@ -79,7 +79,7 @@ this maintained rewrite.
 ### Run in development
 
 ```bash
-git clone https://github.com/LoMce/Perfect-Crewlink.git
+git clone https://github.com/artriy/Perfect-Crewlink.git
 cd Perfect-Crewlink
 npm ci
 npm run tauri -- dev

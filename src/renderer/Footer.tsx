@@ -30,7 +30,7 @@ const RawFooter: React.FC = function () {
 				<Button 
 					color="grey"
 					onClick={() => {
-						bridge.openExternal('https://github.com/LoMce/Perfect-Crewlink');
+						bridge.openExternal('https://github.com/artriy/Perfect-Crewlink');
 					}}
 				>
 					<Tooltip title="Our GitHub page!" arrow>

@@ -32,7 +32,7 @@ const SupportLink: React.FC = function () {
 	return (
 		<Typography align="center">
 			Need help?&nbsp;
-			<Link href="#" color="secondary" onClick={() => bridge.openExternal('https://github.com/LoMce/Perfect-Crewlink/issues')}>
+			<Link href="#" color="secondary" onClick={() => bridge.openExternal('https://github.com/artriy/Perfect-Crewlink/issues')}>
 				Get support
 			</Link>
 			<button className={classes.button} onClick={onRefreshClick}>
