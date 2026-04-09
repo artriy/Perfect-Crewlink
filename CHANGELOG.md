@@ -2,8 +2,6 @@
 
 ## v1.0.0 - 2026-04-09
 
-The first true `Perfect Crewlink` release.
-
 Perfect Crewlink v1.0.0 is the first full release of Perfect Crewlink, built with a modern desktop
 stack, dedicated branding, cleaner packaging, and a large pass across overlay behavior, mod
 support, public lobbies, and day-to-day usability.
