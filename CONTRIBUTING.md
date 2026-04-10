@@ -48,6 +48,7 @@ npm run tauri -- build
 - If you touch Tauri or Rust code, also run `npm run tauri -- build`.
 - If you change overlay or meeting behavior, include a screenshot or short before/after note.
 - If you change process attach or offsets behavior, mention the Among Us build or mod setup you tested against.
+- If you rewrite the README or release notes, follow [docs/DOCS_STYLE_GUIDE.md](docs/DOCS_STYLE_GUIDE.md).
 
 ## Repository structure
 

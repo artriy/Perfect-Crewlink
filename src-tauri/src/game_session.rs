@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     env,
     fs,
     io::Write,
@@ -46,6 +46,17 @@ const CAMERA_SKELD: u8 = 6;
 const CAMERA_NONE: u8 = 7;
 
 const RAINBOW_COLOR_ID: i32 = -99234;
+const MINI_REGION_INSTALL_CONFIG: &str = "at.duikbo.regioninstall.cfg";
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SessionPhase {
+    Detached,
+    Attaching,
+    Warmup,
+    Active,
+    Recovering,
+}
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -92,6 +103,7 @@ pub struct AmongUsState {
     pub light_radius_changed: bool,
     pub closed_doors: Vec<u32>,
     pub current_server: String,
+    pub current_server_label: String,
     pub max_players: u8,
     #[serde(rename = "mod")]
     pub mod_name: String,
@@ -116,6 +128,7 @@ impl Default for AmongUsState {
             light_radius_changed: false,
             closed_doors: Vec::new(),
             current_server: String::new(),
+            current_server_label: String::new(),
             max_players: 0,
             mod_name: "NONE".to_string(),
             old_meeting_hud: false,
@@ -127,12 +140,14 @@ impl Default for AmongUsState {
 #[serde(rename_all = "camelCase")]
 pub struct GameSessionStatus {
     pub is_game_open: bool,
+    pub phase: SessionPhase,
     pub state: Option<AmongUsState>,
 }
 
 #[derive(Clone)]
 pub struct SessionSnapshot {
     pub is_game_open: bool,
+    pub phase: SessionPhase,
     pub state: Option<AmongUsState>,
     pub current_mod: String,
     pub player_colors: Vec<[String; 2]>,
@@ -159,6 +174,7 @@ impl Default for SessionSnapshot {
     fn default() -> Self {
         Self {
             is_game_open: false,
+            phase: SessionPhase::Detached,
             state: Some(AmongUsState::default()),
             current_mod: "NONE".to_string(),
             player_colors: default_player_colors(),
@@ -231,6 +247,7 @@ impl GameSessionManager {
         let snapshot = self.snapshot.lock().unwrap();
         GameSessionStatus {
             is_game_open: snapshot.is_game_open,
+            phase: snapshot.phase,
             state: snapshot.state.clone(),
         }
     }
@@ -281,6 +298,30 @@ const MODS: [ModDefinition; 6] = [
         dll_starts_with: None,
     },
 ];
+
+#[derive(Deserialize)]
+struct MiniRegionInstallPayload {
+    #[serde(rename = "Regions", default)]
+    regions: Vec<MiniRegionInstallRegion>,
+}
+
+#[derive(Deserialize)]
+struct MiniRegionInstallRegion {
+    #[serde(rename = "Name")]
+    name: String,
+    #[serde(rename = "PingServer")]
+    ping_server: Option<String>,
+    #[serde(rename = "Servers", default)]
+    servers: Vec<MiniRegionInstallServer>,
+}
+
+#[derive(Deserialize)]
+struct MiniRegionInstallServer {
+    #[serde(rename = "Ip")]
+    ip: String,
+    #[serde(rename = "Port")]
+    port: Option<u16>,
+}
 
 #[derive(Deserialize)]
 struct OffsetLookup {
@@ -513,6 +554,12 @@ impl GameSessionWorker {
                     debug_log(&format!("worker error: {error}"));
                     let _ = self.app.emit(ERROR_EVENT, error.clone());
                     emitted_error = true;
+                    {
+                        let mut snapshot = self.snapshot.lock().unwrap();
+                        if snapshot.is_game_open {
+                            snapshot.phase = SessionPhase::Recovering;
+                        }
+                    }
                     self.reader = None;
                     thread::sleep(Duration::from_millis(7500));
                 }
@@ -543,6 +590,17 @@ impl GameSessionWorker {
             Some(process) => {
                 let should_replace = existing_pid != Some(process.pid);
                 if should_replace {
+                    let loaded_mod = detect_mod(&process.path);
+                    {
+                        let mut snapshot = self.snapshot.lock().unwrap();
+                        snapshot.is_game_open = true;
+                        snapshot.phase = SessionPhase::Attaching;
+                        snapshot.current_mod = loaded_mod.to_string();
+                        snapshot.state = Some(AmongUsState {
+                            mod_name: loaded_mod.to_string(),
+                            ..AmongUsState::default()
+                        });
+                    }
                     debug_log(&format!(
                         "attach candidate pid={} path={} base=0x{:X} size={}",
                         process.pid,
@@ -557,6 +615,7 @@ impl GameSessionWorker {
                     {
                         let mut snapshot = self.snapshot.lock().unwrap();
                         snapshot.is_game_open = true;
+                        snapshot.phase = SessionPhase::Warmup;
                         if let Some(reader) = &self.reader {
                             snapshot.current_mod = reader.loaded_mod.to_string();
                             snapshot.state = Some(AmongUsState {
@@ -574,11 +633,21 @@ impl GameSessionWorker {
                 if self.reader.take().is_some() {
                     let mut snapshot = self.snapshot.lock().unwrap();
                     snapshot.is_game_open = false;
+                    snapshot.phase = SessionPhase::Detached;
                     snapshot.current_mod = "NONE".to_string();
                     snapshot.state = Some(AmongUsState::default());
                     snapshot.player_colors = default_player_colors();
                     let _ = self.app.emit(NOTIFY_GAME_OPENED, false);
                     debug_log("emitted NOTIFY_GAME_OPENED=false");
+                } else {
+                    let mut snapshot = self.snapshot.lock().unwrap();
+                    if snapshot.is_game_open || snapshot.phase != SessionPhase::Detached {
+                        snapshot.is_game_open = false;
+                        snapshot.phase = SessionPhase::Detached;
+                        snapshot.current_mod = "NONE".to_string();
+                        snapshot.state = Some(AmongUsState::default());
+                        snapshot.player_colors = default_player_colors();
+                    }
                 }
             }
         }
@@ -596,6 +665,7 @@ struct AmongUsReader {
     offsets: Offsets,
     loaded_mod: &'static str,
     current_server: String,
+    region_aliases: HashMap<String, String>,
     old_game_state: u8,
     game_code: String,
     menu_update_timer: i32,
@@ -610,6 +680,7 @@ impl AmongUsReader {
     fn new(app: AppHandle, process_info: ProcessInfo) -> Result<Self, String> {
         let loaded_mod = detect_mod(&process_info.path);
         let is_64_bit = detect_x64_process(&process_info.process, process_info.game_assembly.base_address)?;
+        let region_aliases = load_region_aliases(Some(&process_info.path));
 
         Ok(Self {
             app,
@@ -620,6 +691,7 @@ impl AmongUsReader {
             offsets: empty_offsets(),
             loaded_mod,
             current_server: String::new(),
+            region_aliases,
             old_game_state: GAME_STATE_UNKNOWN,
             game_code: String::new(),
             menu_update_timer: 20,
@@ -1107,6 +1179,7 @@ impl AmongUsReader {
             light_radius_changed: (light_radius - previous_light_radius).abs() > f32::EPSILON,
             closed_doors,
             current_server: self.current_server.clone(),
+            current_server_label: resolve_region_label(&self.current_server, &self.region_aliases),
             max_players,
             mod_name: self.loaded_mod.to_string(),
             old_meeting_hud: self.old_meeting_hud,
@@ -1140,6 +1213,11 @@ impl AmongUsReader {
         {
             let mut snapshot = snapshot.lock().unwrap();
             snapshot.is_game_open = true;
+            snapshot.phase = if should_force_menu {
+                SessionPhase::Warmup
+            } else {
+                SessionPhase::Active
+            };
             snapshot.current_mod = self.loaded_mod.to_string();
             snapshot.state = Some(new_state);
         }
@@ -1397,7 +1475,11 @@ impl AmongUsReader {
 
     fn read_current_server(&mut self) -> Result<(), String> {
         let server_ptr = self.read_pointer_from_module(&self.offsets.server_manager_current_server)?;
-        self.current_server = self.read_string(server_ptr, 100).unwrap_or_default();
+        self.current_server = self
+            .read_string(server_ptr, 100)
+            .unwrap_or_default()
+            .trim()
+            .to_string();
         Ok(())
     }
 
@@ -1826,6 +1908,217 @@ fn read_i32_from_slice(buffer: &[u8], offset: usize) -> Result<i32, String> {
         .get(offset..offset + 4)
         .ok_or_else(|| "Buffer underflow".to_string())?;
     Ok(i32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
+}
+
+fn region_lookup_keys(value: &str) -> Vec<String> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return Vec::new();
+    }
+
+    let lowered = trimmed.to_lowercase();
+    let mut keys = vec![trimmed.to_string(), lowered.clone()];
+    let without_trailing = lowered.trim_end_matches('/').to_string();
+    keys.push(without_trailing.clone());
+
+    if without_trailing.starts_with("http://") || without_trailing.starts_with("https://") {
+        let without_scheme = without_trailing
+            .trim_start_matches("http://")
+            .trim_start_matches("https://");
+        keys.push(without_scheme.to_string());
+
+        let host_with_port = without_scheme.split('/').next().unwrap_or(without_scheme).to_string();
+        keys.push(host_with_port.clone());
+
+        let host_only = host_with_port
+            .split_once(':')
+            .map(|(host, _)| host.to_string())
+            .unwrap_or_else(|| host_with_port.clone());
+        keys.push(host_only.clone());
+
+        if let Some(stripped) = host_only.strip_prefix("www.") {
+            keys.push(stripped.to_string());
+        }
+    }
+
+    let mut seen = HashSet::new();
+    keys.into_iter().filter(|key| seen.insert(key.clone())).collect()
+}
+
+fn insert_region_alias(aliases: &mut HashMap<String, String>, raw_alias: &str, label: &str) {
+    let normalized_label = label.trim();
+    if normalized_label.is_empty() {
+        return;
+    }
+
+    for key in region_lookup_keys(raw_alias) {
+        aliases.insert(key, normalized_label.to_string());
+    }
+
+    for key in region_lookup_keys(normalized_label) {
+        aliases.insert(key, normalized_label.to_string());
+    }
+}
+
+fn built_in_region_aliases() -> HashMap<String, String> {
+    let mut aliases = HashMap::new();
+    for (raw_alias, label) in [
+        ("50.116.1.42", "North America"),
+        ("172.105.251.170", "Europe"),
+        ("139.162.111.196", "Asia"),
+        ("192.241.154.115", "skeld.net"),
+        ("185.7.80.9", "TOU Master"),
+        ("154.16.67.100", "Modded (North America)"),
+        ("78.47.142.18", "Modded (Europe)"),
+    ] {
+        insert_region_alias(&mut aliases, raw_alias, label);
+    }
+    aliases
+}
+
+fn unescape_bepinex_string(value: &str) -> String {
+    let mut result = String::with_capacity(value.len());
+    let mut chars = value.chars();
+
+    while let Some(ch) = chars.next() {
+        if ch != '\\' {
+            result.push(ch);
+            continue;
+        }
+
+        match chars.next() {
+            Some('"') => result.push('"'),
+            Some('\\') => result.push('\\'),
+            Some('n') => result.push('\n'),
+            Some('r') => result.push('\r'),
+            Some('t') => result.push('\t'),
+            Some(other) => result.push(other),
+            None => result.push('\\'),
+        }
+    }
+
+    result
+}
+
+fn extend_region_aliases_from_config(aliases: &mut HashMap<String, String>, config_contents: &str) {
+    let Some(payload) = config_contents
+        .lines()
+        .map(str::trim)
+        .find_map(|line| line.strip_prefix("Regions = "))
+    else {
+        return;
+    };
+
+    let Ok(parsed) = serde_json::from_str::<MiniRegionInstallPayload>(&unescape_bepinex_string(payload)) else {
+        return;
+    };
+
+    for region in parsed.regions {
+        let label = region.name.trim();
+        if label.is_empty() {
+            continue;
+        }
+
+        insert_region_alias(aliases, label, label);
+
+        if let Some(ping_server) = region.ping_server.as_deref() {
+            insert_region_alias(aliases, ping_server, label);
+        }
+
+        for server in region.servers {
+            insert_region_alias(aliases, &server.ip, label);
+
+            if let Some(port) = server.port {
+                insert_region_alias(aliases, &format!("{}:{port}", server.ip.trim_end_matches('/')), label);
+            }
+        }
+    }
+}
+
+fn region_config_candidates(process_path: Option<&Path>) -> Vec<PathBuf> {
+    let mut candidates = Vec::new();
+    let mut seen = HashSet::new();
+
+    let mut push_candidate = |path: PathBuf| {
+        if path.exists() && seen.insert(path.clone()) {
+            candidates.push(path);
+        }
+    };
+
+    if let Some(process_path) = process_path {
+        if let Some(parent) = process_path.parent() {
+            push_candidate(
+                parent
+                    .join("BepInEx")
+                    .join("config")
+                    .join(MINI_REGION_INSTALL_CONFIG),
+            );
+        }
+    }
+
+    for drive_letter in b'A'..=b'Z' {
+        for root in [
+            format!("{}:\\SteamLibrary\\steamapps\\common", drive_letter as char),
+            format!("{}:\\Program Files (x86)\\Steam\\steamapps\\common", drive_letter as char),
+            format!("{}:\\Program Files\\Steam\\steamapps\\common", drive_letter as char),
+        ] {
+            let root_path = PathBuf::from(root);
+            if !root_path.exists() {
+                continue;
+            }
+
+            let Ok(entries) = fs::read_dir(&root_path) else {
+                continue;
+            };
+
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if !path.is_dir() {
+                    continue;
+                }
+
+                let name = entry.file_name().to_string_lossy().to_string();
+                if !name.starts_with("Among Us") {
+                    continue;
+                }
+
+                push_candidate(
+                    path.join("BepInEx")
+                        .join("config")
+                        .join(MINI_REGION_INSTALL_CONFIG),
+                );
+            }
+        }
+    }
+
+    candidates
+}
+
+pub fn load_region_aliases(process_path: Option<&Path>) -> HashMap<String, String> {
+    let mut aliases = built_in_region_aliases();
+
+    for config_path in region_config_candidates(process_path) {
+        if let Ok(config_contents) = fs::read_to_string(&config_path) {
+            extend_region_aliases_from_config(&mut aliases, &config_contents);
+        }
+    }
+
+    aliases
+}
+
+fn resolve_region_label(server: &str, aliases: &HashMap<String, String>) -> String {
+    for key in region_lookup_keys(server) {
+        if let Some(label) = aliases.get(&key) {
+            return label.clone();
+        }
+    }
+
+    let trimmed = server.trim();
+    if trimmed.is_empty() {
+        "Unknown Region".to_string()
+    } else {
+        trimmed.to_string()
+    }
 }
 
 fn detect_mod(process_path: &Path) -> &'static str {

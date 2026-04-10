@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState, CSSProperties } from 'react';
+import React, { useEffect, useMemo, useRef, useState, CSSProperties } from 'react';
 import { bridge } from './bridge';
-import { AmongUsState, GameState, VoiceState } from '../common/AmongUsState';
+import { AmongUsState, GameState, Player, VoiceState } from '../common/AmongUsState';
 import { IpcOverlayMessages, IpcMessages } from '../common/ipc-messages';
 import ReactDOM from 'react-dom';
 import makeStyles from '@mui/styles/makeStyles';
@@ -86,6 +86,7 @@ const EMPTY_GAME_STATE: AmongUsState = {
 	lightRadiusChanged: false,
 	closedDoors: [],
 	currentServer: '',
+	currentServerLabel: '',
 	maxPlayers: 0,
 	mod: 'NONE',
 	oldMeetingHud: false,
@@ -93,10 +94,8 @@ const EMPTY_GAME_STATE: AmongUsState = {
 
 const EMPTY_VOICE_STATE: VoiceState = {
 	otherTalking: {},
-	playerSocketIds: {},
 	otherDead: {},
-	socketClients: {},
-	audioConnected: {},
+	clientConnections: {},
 	impostorRadioClientId: -1,
 	localTalking: false,
 	localIsAlive: true,
@@ -105,12 +104,30 @@ const EMPTY_VOICE_STATE: VoiceState = {
 	mod: 'NONE',
 };
 
+function normalizeVoiceState(nextState: Partial<VoiceState> | null | undefined): VoiceState {
+	return {
+		...EMPTY_VOICE_STATE,
+		...(nextState ?? {}),
+		otherTalking: nextState?.otherTalking ?? {},
+		otherDead: nextState?.otherDead ?? {},
+		clientConnections: nextState?.clientConnections ?? {},
+	};
+}
+
+const OVERLAY_ROSTER_GRACE_MS = 2000;
+
+interface StableOverlayPlayer {
+	player: Player;
+	firstSeenAt: number;
+	lastSeenAt: number;
+}
+
 const Overlay: React.FC = function () {
 	const [gameState, setGameState] = useState<AmongUsState>(
 		() => readOverlayState<AmongUsState>(OVERLAY_STATE_KEYS.gameState) ?? EMPTY_GAME_STATE
 	);
 	const [voiceState, setVoiceState] = useState<VoiceState>(
-		() => readOverlayState<VoiceState>(OVERLAY_STATE_KEYS.voiceState) ?? EMPTY_VOICE_STATE
+		() => normalizeVoiceState(readOverlayState<VoiceState>(OVERLAY_STATE_KEYS.voiceState))
 	);
 	const [settings, setSettings] = useState<ISettings>(
 		() => readOverlayState<ISettings>(OVERLAY_STATE_KEYS.settings) ?? SettingsStore.store
@@ -134,7 +151,7 @@ const Overlay: React.FC = function () {
 			setGameState(newState);
 		};
 		const onVoiceState = (_: unknown, newState: VoiceState) => {
-			setVoiceState(newState);
+			setVoiceState(normalizeVoiceState(newState));
 		};
 		const onSettings = (_: unknown, newState: ISettings) => {
 			console.log('Recieved settings..');
@@ -160,7 +177,7 @@ const Overlay: React.FC = function () {
 			if (event.key === OVERLAY_STATE_KEYS.voiceState) {
 				const nextVoiceState = readOverlayState<VoiceState>(OVERLAY_STATE_KEYS.voiceState);
 				if (nextVoiceState) {
-					setVoiceState(nextVoiceState);
+					setVoiceState(normalizeVoiceState(nextVoiceState));
 				}
 				return;
 			}
@@ -260,6 +277,9 @@ const AvatarOverlay: React.FC<AvatarOverlayProps> = ({
 	playerColors,
 }: AvatarOverlayProps) => {
 	const positionParse = position.replace('1', '');
+	const [nowTick, setNowTick] = useState(() => Date.now());
+	const [stablePlayers, setStablePlayers] = useState<Record<number, StableOverlayPlayer>>({});
+	const previousLobbyCodeRef = useRef(gameState.lobbyCode);
 
 	const avatars: JSX.Element[] = [];
 	const isOnSide = positionParse == 'right' || positionParse == 'left';
@@ -278,9 +298,81 @@ const AvatarOverlay: React.FC<AvatarOverlayProps> = ({
 		}
 	}
 
+	useEffect(() => {
+		const tickId = window.setInterval(() => {
+			setNowTick(Date.now());
+		}, 250);
+
+		return () => {
+			window.clearInterval(tickId);
+		};
+	}, []);
+
+	useEffect(() => {
+		if (previousLobbyCodeRef.current === gameState.lobbyCode) {
+			return;
+		}
+
+		previousLobbyCodeRef.current = gameState.lobbyCode;
+		setStablePlayers({});
+	}, [gameState.lobbyCode]);
+
+	useEffect(() => {
+		if (gameState.gameState === GameState.MENU || gameState.gameState === GameState.UNKNOWN) {
+			setStablePlayers({});
+			return;
+		}
+
+		setStablePlayers((old) => {
+			const next: Record<number, StableOverlayPlayer> = { ...old };
+			const liveClientIds = new Set<number>();
+
+			for (const player of gameState.players ?? []) {
+				liveClientIds.add(player.clientId);
+				next[player.clientId] = {
+					player,
+					firstSeenAt: old[player.clientId]?.firstSeenAt ?? nowTick,
+					lastSeenAt: nowTick,
+				};
+			}
+
+			for (const key of Object.keys(next)) {
+				const clientId = Number(key);
+				if (liveClientIds.has(clientId)) {
+					continue;
+				}
+
+				const slot = next[clientId];
+				const connection = voiceState.clientConnections[clientId];
+				const recentlyConnected =
+					Boolean(connection?.connected) ||
+					(Boolean(connection?.lastSeenAt) && nowTick - connection.lastSeenAt <= OVERLAY_ROSTER_GRACE_MS);
+				const recentlyTalking =
+					Boolean(voiceState.otherTalking[clientId]) ||
+					(slot.player.isLocal && voiceState.localTalking);
+
+				if (recentlyConnected || recentlyTalking || nowTick - slot.lastSeenAt <= OVERLAY_ROSTER_GRACE_MS) {
+					continue;
+				}
+
+				delete next[clientId];
+			}
+
+			return next;
+		});
+	}, [
+		gameState.gameState,
+		gameState.players,
+		nowTick,
+		voiceState.clientConnections,
+		voiceState.localTalking,
+		voiceState.otherTalking,
+	]);
+
 	const players = useMemo(() => {
-		if (!gameState.players) return null;
-		const playerss = gameState.players
+		const sourcePlayers = Object.values(stablePlayers).map((entry) => entry.player);
+		if (sourcePlayers.length === 0) return null;
+		const playerss = sourcePlayers
 			.filter((o) => !voiceState.localIsAlive || !(voiceState.otherDead[o.clientId] && !o.isLocal))
 			.slice()
 			.sort((a, b) => {
@@ -298,7 +390,7 @@ const AvatarOverlay: React.FC<AvatarOverlayProps> = ({
 			});
 
 		return playerss;
-	}, [gameState.players, voiceState.localIsAlive, voiceState.otherDead]);
+	}, [stablePlayers, voiceState.localIsAlive, voiceState.otherDead]);
 
 	if (!players) return null;
 
@@ -316,12 +408,14 @@ const AvatarOverlay: React.FC<AvatarOverlayProps> = ({
 		) {
 			return;
 		}
-		const peer = voiceState.playerSocketIds[player.clientId];
-		const connected = voiceState.socketClients[peer]?.clientId === player.clientId;
+		const clientConnection = voiceState.clientConnections[player.clientId];
+		const connected =
+			player.isLocal ||
+			Boolean(clientConnection?.connected) ||
+			(Boolean(clientConnection?.lastSeenAt) && nowTick - clientConnection.lastSeenAt <= OVERLAY_ROSTER_GRACE_MS);
 		if (!connected && !player.isLocal) {
 			return;
 		}
-		// const audio = voiceState.audioConnected[peer];
 		avatars.push(
 			<div key={player.id} className="player_wrapper">
 				<div>
@@ -383,6 +477,9 @@ interface MeetingHudProps {
 
 const MeetingHud: React.FC<MeetingHudProps> = ({ voiceState, gameState, playerColors, aleLuduMode }: MeetingHudProps) => {
 	const [windowWidth, windowheight] = useWindowSize();
+	const [nowTick, setNowTick] = useState(() => Date.now());
+	const [stablePlayers, setStablePlayers] = useState<Record<number, StableOverlayPlayer>>({});
+	const previousLobbyCodeRef = useRef(gameState.lobbyCode);
 	const [width, height] = useMemo(() => {
 		if (gameState.oldMeetingHud) {
 			let hudWidth = 0,
@@ -419,9 +516,82 @@ const MeetingHud: React.FC<MeetingHudProps> = ({ voiceState, gameState, playerCo
 		oldHud: gameState.oldMeetingHud,
 		aleLuduMode: !gameState.oldMeetingHud && aleLuduMode,
 	});
+
+	useEffect(() => {
+		const tickId = window.setInterval(() => {
+			setNowTick(Date.now());
+		}, 250);
+
+		return () => {
+			window.clearInterval(tickId);
+		};
+	}, []);
+
+	useEffect(() => {
+		if (previousLobbyCodeRef.current === gameState.lobbyCode) {
+			return;
+		}
+
+		previousLobbyCodeRef.current = gameState.lobbyCode;
+		setStablePlayers({});
+	}, [gameState.lobbyCode]);
+
+	useEffect(() => {
+		if (gameState.gameState === GameState.MENU || gameState.gameState === GameState.UNKNOWN) {
+			setStablePlayers({});
+			return;
+		}
+
+		setStablePlayers((old) => {
+			const next: Record<number, StableOverlayPlayer> = { ...old };
+			const liveClientIds = new Set<number>();
+
+			for (const player of gameState.players ?? []) {
+				liveClientIds.add(player.clientId);
+				next[player.clientId] = {
+					player,
+					firstSeenAt: old[player.clientId]?.firstSeenAt ?? nowTick,
+					lastSeenAt: nowTick,
+				};
+			}
+
+			for (const key of Object.keys(next)) {
+				const clientId = Number(key);
+				if (liveClientIds.has(clientId)) {
+					continue;
+				}
+
+				const slot = next[clientId];
+				const connection = voiceState.clientConnections[clientId];
+				const recentlyConnected =
+					Boolean(connection?.connected) ||
+					(Boolean(connection?.lastSeenAt) && nowTick - connection.lastSeenAt <= OVERLAY_ROSTER_GRACE_MS);
+				const recentlyTalking =
+					Boolean(voiceState.otherTalking[clientId]) ||
+					(slot.player.isLocal && voiceState.localTalking);
+
+				if (recentlyConnected || recentlyTalking || nowTick - slot.lastSeenAt <= OVERLAY_ROSTER_GRACE_MS) {
+					continue;
+				}
+
+				delete next[clientId];
+			}
+
+			return next;
+		});
+	}, [
+		gameState.gameState,
+		gameState.players,
+		nowTick,
+		voiceState.clientConnections,
+		voiceState.localTalking,
+		voiceState.otherTalking,
+	]);
+
 	const players = useMemo(() => {
-		if (!gameState.players) return null;
-		return gameState.players.slice().sort((a, b) => {
+		const sourcePlayers = Object.values(stablePlayers).map((entry) => entry.player);
+		if (sourcePlayers.length === 0) return null;
+		return sourcePlayers.slice().sort((a, b) => {
 			if ((a.disconnected || a.isDead) && (b.disconnected || b.isDead)) {
 				return a.id - b.id;
 			} else if (a.disconnected || a.isDead) {
@@ -431,7 +601,7 @@ const MeetingHud: React.FC<MeetingHudProps> = ({ voiceState, gameState, playerCo
 			}
 			return a.id - b.id;
 		});
-	}, [gameState.players]);
+	}, [stablePlayers]);
 	if (!players || gameState.gameState !== GameState.DISCUSSION) return null;
 
 	const overlays = players.map((player) => {

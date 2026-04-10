@@ -19,6 +19,8 @@ import languages from '../language/languages';
 import { PublicLobbyMap, PublicLobby } from '../../common/PublicLobby';
 import { modList, ModsType } from '../../common/Mods';
 import { GameState } from '../../common/AmongUsState';
+import { getRegionAliases } from '../../common/tauri-game';
+import { resolveRegionLabel } from '../../common/regions';
 import SettingsStore from '../settings/SettingsStore';
 
 const serverUrl = SettingsStore.get('serverURL', 'https://bettercrewl.ink/');
@@ -93,17 +95,6 @@ const useStyles = makeStyles({
 	},
 });
 
-const servers: {
-	[server: string]: string;
-} = {
-	// '50.116.1.42': 'North America',
-	// '172.105.251.170': 'Europe',
-	// '139.162.111.196': 'Asia',
-	'192.241.154.115': 'skeld.net',
-	'154.16.67.100': 'Modded (North America)',
-	'78.47.142.18': 'Modded (Europe)',
-};
-
 function sortLobbies(a: PublicLobby, b: PublicLobby) {
 	if (a.gameState === GameState.LOBBY && b.gameState !== GameState.LOBBY) {
 		return -1;
@@ -126,13 +117,8 @@ function getModName(mod: string): string {
 	return modList.find((o) => o.id === mod)?.label || (mod ?? 'None')
 }
 
-function getServerLabel(server: string): string {
-	const normalizedServer = server?.trim();
-	if (!normalizedServer) {
-		return 'Unknown Region';
-	}
-
-	return servers[normalizedServer] ?? normalizedServer;
+function getServerLabel(server: string, regionAliases: Record<string, string>): string {
+	return resolveRegionLabel(server, regionAliases);
 }
 
 function normalizeLobbyCode(value: string | null | undefined): string | null {
@@ -144,7 +130,7 @@ interface LobbyCodePreview {
 	code: string | null;
 	region: string;
 	available: boolean;
-	reason?: 'blocked_incompatible' | 'incompatible' | 'retrying' | 'unavailable' | 'stale_listing';
+	reason?: 'blocked_incompatible' | 'incompatible' | 'retrying' | 'unavailable';
 }
 
 interface LobbyBrowserProps {
@@ -161,6 +147,7 @@ export default function LobbyBrowser({ t }: LobbyBrowserProps) {
 	const [ignoreIncompatibleMods, setIgnoreIncompatibleMods] = useState(() =>
 		SettingsStore.get('ignoreIncompatibleLobbyBrowserMods', true)
 	);
+	const [regionAliases, setRegionAliases] = useState<Record<string, string>>({});
 	const [, forceRender] = useState({});
 	const pendingCodeRequests = useRef<Set<number>>(new Set());
 	const retryTimeouts = useRef<Record<number, number>>({});
@@ -184,6 +171,11 @@ export default function LobbyBrowser({ t }: LobbyBrowserProps) {
 		window.addEventListener('storage', handleStorage);
 
 		bridge.invoke(IpcMessages.REQUEST_MOD).then((mod: ModsType) => setMod(mod));
+		void getRegionAliases()
+			.then((aliases) => setRegionAliases(aliases))
+			.catch(() => {
+				/* empty */
+			});
 
 		const s = io(serverUrl, {
 			transports: ['websocket'],
@@ -290,7 +282,7 @@ export default function LobbyBrowser({ t }: LobbyBrowserProps) {
 					if (existingPreview?.reason !== 'blocked_incompatible') {
 						next[lobby.id] = {
 							code: null,
-							region: getServerLabel(lobby.server),
+							region: getServerLabel(lobby.server, regionAliases),
 							available: false,
 							reason: 'blocked_incompatible',
 						};
@@ -307,7 +299,7 @@ export default function LobbyBrowser({ t }: LobbyBrowserProps) {
 
 			return changed ? next : old;
 		});
-	}, [ignoreIncompatibleMods, mod, publiclobbies]);
+	}, [ignoreIncompatibleMods, mod, publiclobbies, regionAliases]);
 
 	useEffect(() => {
 		if (!socket || !showLobbyCode) {
@@ -342,7 +334,7 @@ export default function LobbyBrowser({ t }: LobbyBrowserProps) {
 						...old,
 						[lobby.id]: {
 							code: null,
-							region: getServerLabel(String(server || lobby.server)),
+							region: getServerLabel(String(server || lobby.server), regionAliases),
 							available: false,
 							reason: 'retrying',
 						},
@@ -361,34 +353,14 @@ export default function LobbyBrowser({ t }: LobbyBrowserProps) {
 					return;
 				}
 
-				if (state !== 0 && !returnedCode && isStaleListingResponse) {
-					setPublicLobbies((old) => {
-						if (!(lobby.id in old)) {
-							return old;
-						}
-						const next = { ...old };
-						delete next[lobby.id];
-						return next;
-					});
-					setLobbyCodes((old) => {
-						if (!(lobby.id in old)) {
-							return old;
-						}
-						const next = { ...old };
-						delete next[lobby.id];
-						return next;
-					});
-					return;
-				}
-
 				if (state !== 0 && !returnedCode) {
 					setLobbyCodes((old) => ({
 						...old,
 						[lobby.id]: {
 							code: null,
-							region: getServerLabel(String(server || lobby.server)),
+							region: getServerLabel(String(server || lobby.server), regionAliases),
 							available: false,
-							reason: isIncompatibleResponse ? 'incompatible' : 'unavailable',
+							reason: isIncompatibleResponse || isStaleListingResponse ? 'retrying' : 'unavailable',
 						},
 					}));
 					retryTimeouts.current[lobby.id] = window.setTimeout(() => {
@@ -415,7 +387,7 @@ export default function LobbyBrowser({ t }: LobbyBrowserProps) {
 						...old,
 						[lobby.id]: {
 							code,
-							region: getServerLabel(String(server || lobby.server)),
+							region: getServerLabel(String(server || lobby.server), regionAliases),
 							available: Boolean(code),
 							reason,
 						},
@@ -423,7 +395,7 @@ export default function LobbyBrowser({ t }: LobbyBrowserProps) {
 				});
 			});
 		}
-	}, [ignoreIncompatibleMods, lobbyCodes, mod, publiclobbies, showLobbyCode, socket]);
+	}, [ignoreIncompatibleMods, lobbyCodes, mod, publiclobbies, regionAliases, showLobbyCode, socket]);
 
 	useEffect(() => {
 		if (copiedLobbyId === null) {
@@ -526,7 +498,7 @@ export default function LobbyBrowser({ t }: LobbyBrowserProps) {
 															{lobbyCodeLabel}
 														</span>
 														<span className={classes.codeRegion}>
-															{lobbyCodePreview?.region ?? getServerLabel(row.server)}
+															{lobbyCodePreview?.region ?? getServerLabel(row.server, regionAliases)}
 														</span>
 													</div>
 													<Tooltip

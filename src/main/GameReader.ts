@@ -26,6 +26,7 @@ import fs from 'fs';
 import path from 'path';
 import { AmongusMod, modList } from '../common/Mods';
 import { app } from 'electron';
+import { resolveRegionLabel } from '../common/regions';
 
 let appVersion = '';
 if (process.env.NODE_ENV !== 'production') {
@@ -397,6 +398,7 @@ export default class GameReader {
 				mod: this.loadedMod.id,
 				closedDoors,
 				currentServer: this.currentServer,
+				currentServerLabel: resolveRegionLabel(this.currentServer),
 				maxPlayers,
 				oldMeetingHud: this.oldMeetingHud,
 			};
@@ -905,7 +907,7 @@ export default class GameReader {
 			this.gameAssembly!.modBaseAddr,
 			this.offsets!.serverManager_currentServer
 		);
-		this.currentServer = this.readString(currentServer);
+		this.currentServer = this.readString(currentServer).trim();
 	}
 
 	readMemory<T>(dataType: DataType, address: number, offsets?: number[] | number, defaultParam?: T): T {

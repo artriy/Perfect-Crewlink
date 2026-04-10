@@ -17,6 +17,7 @@ export interface AmongUsState {
 	lightRadiusChanged: boolean;
 	closedDoors: number[];
 	currentServer: string;
+	currentServerLabel: string;
 	maxPlayers: number;
 	mod: ModsType;
 	oldMeetingHud: boolean;
@@ -74,12 +75,23 @@ export interface numberStringMap {
 	[index: number]: string;
 }
 
+export interface ClientConnectionState {
+	clientId: number;
+	socketId: string | null;
+	connected: boolean;
+	audioConnected: boolean;
+	lastSeenAt: number;
+	lastAudioAt: number;
+}
+
+export interface ClientConnectionMap {
+	[clientId: number]: ClientConnectionState;
+}
+
 export interface VoiceState {
 	otherTalking: ClientBoolMap;
-	playerSocketIds: numberStringMap;
 	otherDead: ClientBoolMap;
-	socketClients: SocketClientMap;
-	audioConnected: AudioConnected;
+	clientConnections: ClientConnectionMap;
 	impostorRadioClientId: number;
 	localTalking: boolean;
 	localIsAlive: boolean;

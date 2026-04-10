@@ -7,10 +7,11 @@ import {
 	GameState,
 	Player,
 	SocketClientMap,
-	AudioConnected,
 	ClientBoolMap,
 	numberStringMap,
 	Client,
+	ClientConnectionMap,
+	ClientConnectionState,
 	VoiceState,
 } from '../common/AmongUsState';
 import Peer from 'simple-peer';
@@ -60,6 +61,7 @@ interface VadNode {
 }
 
 interface AudioNodes {
+	context: AudioContext;
 	dummyAudioElement: HTMLAudioElement;
 	audioElement: HTMLAudioElement;
 	gain: GainNode;
@@ -73,6 +75,24 @@ interface AudioNodes {
 
 interface AudioElements {
 	[peer: string]: AudioNodes;
+}
+
+interface ClientAudioActivityState {
+	level: number;
+	speaking: boolean;
+	audible: boolean;
+	lastActivityAt: number;
+}
+
+interface PeerAudioMonitor {
+	clientId: number;
+	intervalId: number;
+	samples: Float32Array<ArrayBuffer>;
+	analyser: AnalyserNode;
+	smoothedLevel: number;
+	speaking: boolean;
+	audible: boolean;
+	lastActivityAt: number;
 }
 
 interface ConnectionStuff {
@@ -126,6 +146,12 @@ const DEFAULT_ICE_CONFIG_TURN: RTCConfiguration = {
 		},
 	],
 };
+
+const REMOTE_AUDIO_UPDATE_INTERVAL_MS = 80;
+const REMOTE_AUDIO_AUDIBLE_ON = 0.02;
+const REMOTE_AUDIO_AUDIBLE_OFF = 0.012;
+const REMOTE_AUDIO_SPEAKING_ON = 0.045;
+const REMOTE_AUDIO_SPEAKING_OFF = 0.024;
 
 export interface VoiceProps {
 	t: (key: string) => string;
@@ -256,7 +282,9 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 	const [peerConnections, setPeerConnections] = useState<PeerConnections>({});
 	const peerConnectionsRef = useRef<PeerConnections>({});
 	const convolverBuffer = useRef<AudioBuffer | null>(null);
-	const playerSocketIdsRef = useRef<numberStringMap>({});
+	const [clientConnections, setClientConnections] = useState<ClientConnectionMap>({});
+	const clientConnectionsRef = useRef<ClientConnectionMap>({});
+	const clientSocketIdsRef = useRef<numberStringMap>({});
 	const classes = useStyles();
 
 	const [connect, setConnect] = useState<{
@@ -264,14 +292,13 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 	} | null>(null);
 	const [otherTalking, setOtherTalking] = useState<ClientBoolMap>({});
 	const [otherVAD, setOtherVAD] = useState<ClientBoolMap>({});
-	const [peerAudioActivity, setPeerAudioActivity] = useState<Record<string, boolean>>({});
+	const [clientAudioActivity, setClientAudioActivity] = useState<Record<number, ClientAudioActivityState>>({});
 
 	const [otherDead, setOtherDead] = useState<ClientBoolMap>({});
 	const impostorRadioClientId = useRef<number>(-1);
 
 	const audioElements = useRef<AudioElements>({});
-	const peerAudioListeners = useRef<Record<string, VadNode>>({});
-	const [audioConnected, setAudioConnected] = useState<AudioConnected>({});
+	const peerAudioMonitors = useRef<Record<string, PeerAudioMonitor>>({});
 
 	const [deafenedState, setDeafened] = useState(settings.startDeafened);
 	const [mutedState, setMuted] = useState(settings.startMuted);
@@ -280,10 +307,8 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 	const previousLobbyCode = useRef(gameState.lobbyCode);
 	const overlayVoiceStateRef = useRef<VoiceState>({
 		otherTalking: {},
-		playerSocketIds: {},
 		otherDead: {},
-		socketClients: {},
-		audioConnected: {},
+		clientConnections: {},
 		impostorRadioClientId: -1,
 		localTalking: false,
 		localIsAlive: true,
@@ -297,13 +322,112 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 		setServerHostId(0);
 	};
 
-	const clearPeerAudioActivity = (peer: string) => {
-		setPeerAudioActivity((old) => {
-			if (!Object.prototype.hasOwnProperty.call(old, peer)) {
+	const upsertClientConnection = (clientId: number, patch: Partial<ClientConnectionState>) => {
+		const now = Date.now();
+		setClientConnections((old) => {
+			const previous = old[clientId];
+			const nextState: ClientConnectionState = {
+				clientId,
+				socketId: previous?.socketId ?? null,
+				connected: previous?.connected ?? false,
+				audioConnected: previous?.audioConnected ?? false,
+				lastSeenAt: previous?.lastSeenAt ?? now,
+				lastAudioAt: previous?.lastAudioAt ?? 0,
+				...previous,
+				...patch,
+			};
+			if (
+				previous &&
+				previous.socketId === nextState.socketId &&
+				previous.connected === nextState.connected &&
+				previous.audioConnected === nextState.audioConnected &&
+				previous.lastSeenAt === nextState.lastSeenAt &&
+				previous.lastAudioAt === nextState.lastAudioAt
+			) {
+				return old;
+			}
+			const next = { ...old, [clientId]: nextState };
+			clientConnectionsRef.current = next;
+			return next;
+		});
+	};
+
+	const markClientDisconnected = (clientId: number, socketId?: string) => {
+		setClientConnections((old) => {
+			const previous = old[clientId];
+			if (!previous) {
+				return old;
+			}
+			if (socketId && previous.socketId && previous.socketId !== socketId) {
+				return old;
+			}
+			const next = {
+				...old,
+				[clientId]: {
+					...previous,
+					socketId: null,
+					connected: false,
+					audioConnected: false,
+				},
+			};
+			clientConnectionsRef.current = next;
+			return next;
+		});
+	};
+
+	const setClientConnectionMap = (nextClients: SocketClientMap) => {
+		socketClientsRef.current = nextClients;
+		setSocketClients(nextClients);
+
+		const nextSocketIds: numberStringMap = {};
+		const seenClientIds = new Set<number>();
+		const now = Date.now();
+
+		for (const [socketId, client] of Object.entries(nextClients)) {
+			nextSocketIds[client.clientId] = socketId;
+			seenClientIds.add(client.clientId);
+		}
+
+		clientSocketIdsRef.current = nextSocketIds;
+		setClientConnections((old) => {
+			const next: ClientConnectionMap = { ...old };
+
+			for (const [socketId, client] of Object.entries(nextClients)) {
+				const previous = next[client.clientId];
+				next[client.clientId] = {
+					clientId: client.clientId,
+					socketId,
+					connected: true,
+					audioConnected: previous?.audioConnected ?? false,
+					lastSeenAt: now,
+					lastAudioAt: previous?.lastAudioAt ?? 0,
+				};
+			}
+
+			for (const key of Object.keys(next)) {
+				const clientId = Number(key);
+				if (!seenClientIds.has(clientId)) {
+					next[clientId] = {
+						...next[clientId],
+						socketId: null,
+						connected: false,
+						audioConnected: false,
+					};
+				}
+			}
+
+			clientConnectionsRef.current = next;
+			return next;
+		});
+	};
+
+	const clearClientAudioActivity = (clientId: number) => {
+		setClientAudioActivity((old) => {
+			if (!Object.prototype.hasOwnProperty.call(old, clientId)) {
 				return old;
 			}
 			const next = { ...old };
-			delete next[peer];
+			delete next[clientId];
 			return next;
 		});
 	};
@@ -542,12 +666,93 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 		element.load();
 		element.remove();
 	}
-	function disconnectAudioElement(peer: string) {
-		if (peerAudioListeners.current[peer]) {
-			peerAudioListeners.current[peer].destroy();
-			delete peerAudioListeners.current[peer];
+
+	function updateClientAudioActivity(clientId: number, nextState: ClientAudioActivityState) {
+		setClientAudioActivity((old) => {
+			const previous = old[clientId];
+			if (
+				previous &&
+				previous.speaking === nextState.speaking &&
+				previous.audible === nextState.audible &&
+				Math.abs(previous.level - nextState.level) < 0.004 &&
+				previous.lastActivityAt === nextState.lastActivityAt
+			) {
+				return old;
+			}
+			return { ...old, [clientId]: nextState };
+		});
+	}
+
+	function startPeerAudioMonitor(peer: string, clientId: number, analyser: AnalyserNode) {
+		const existing = peerAudioMonitors.current[peer];
+		if (existing) {
+			window.clearInterval(existing.intervalId);
 		}
-		clearPeerAudioActivity(peer);
+
+		const monitor: PeerAudioMonitor = {
+			clientId,
+			intervalId: 0,
+			samples: new Float32Array(analyser.fftSize) as Float32Array<ArrayBuffer>,
+			analyser,
+			smoothedLevel: 0,
+			speaking: false,
+			audible: false,
+			lastActivityAt: 0,
+		};
+
+		monitor.intervalId = window.setInterval(() => {
+			monitor.analyser.getFloatTimeDomainData(monitor.samples);
+			let sum = 0;
+			for (const sample of monitor.samples) {
+				sum += sample * sample;
+			}
+			const rms = Math.sqrt(sum / monitor.samples.length);
+			monitor.smoothedLevel = monitor.smoothedLevel * 0.72 + rms * 0.28;
+
+			if (monitor.smoothedLevel >= REMOTE_AUDIO_SPEAKING_ON) {
+				monitor.speaking = true;
+			} else if (monitor.smoothedLevel <= REMOTE_AUDIO_SPEAKING_OFF) {
+				monitor.speaking = false;
+			}
+
+			if (monitor.smoothedLevel >= REMOTE_AUDIO_AUDIBLE_ON) {
+				monitor.audible = true;
+			} else if (monitor.smoothedLevel <= REMOTE_AUDIO_AUDIBLE_OFF) {
+				monitor.audible = false;
+			}
+
+			if (monitor.audible) {
+				monitor.lastActivityAt = Date.now();
+			}
+			const lastActivityAt = monitor.lastActivityAt;
+			updateClientAudioActivity(clientId, {
+				level: monitor.smoothedLevel,
+				speaking: monitor.speaking,
+				audible: monitor.audible,
+				lastActivityAt,
+			});
+			upsertClientConnection(clientId, {
+				audioConnected: true,
+				lastAudioAt: lastActivityAt,
+			});
+		}, REMOTE_AUDIO_UPDATE_INTERVAL_MS);
+
+		peerAudioMonitors.current[peer] = monitor;
+	}
+
+	function disconnectAudioElement(peer: string) {
+		const monitor = peerAudioMonitors.current[peer];
+		if (monitor) {
+			window.clearInterval(monitor.intervalId);
+			delete peerAudioMonitors.current[peer];
+			const activeSocketId = clientConnectionsRef.current[monitor.clientId]?.socketId;
+			if (!activeSocketId || activeSocketId === peer) {
+				clearClientAudioActivity(monitor.clientId);
+				upsertClientConnection(monitor.clientId, {
+					audioConnected: false,
+				});
+			}
+		}
 		if (audioElements.current[peer]) {
 			console.log('removing element..');
 			disconnectAudioHtmlElement(audioElements.current[peer].audioElement);
@@ -556,27 +761,31 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 			audioElements.current[peer].gain.disconnect();
 			// if (audioElements.current[peer].reverbGain != null) audioElements.current[peer].reverbGain?.disconnect();
 			if (audioElements.current[peer].reverb != null) audioElements.current[peer].reverb?.disconnect();
+			void audioElements.current[peer].context.close().catch(() => undefined);
 			delete audioElements.current[peer];
 		}
 	}
 
-	function disconnectClient(client: Client) {
-		if (!client || !client.clientId)
+	function disconnectClient(client: Client, keepSocketId?: string) {
+		if (!client || !client.clientId) {
 			return;
-		const oldSocketId = playerSocketIdsRef.current[client.clientId];
-		console.log("Checking for  old connection ....", client.clientId, oldSocketId)
-		if (oldSocketId && audioElements.current[oldSocketId]) {
-			console.log("found old connection disconnecting....", client.clientId)
-			disconnectAudioElement(oldSocketId);
+		}
+
+		const knownSocketId = clientSocketIdsRef.current[client.clientId];
+		if (knownSocketId && knownSocketId !== keepSocketId) {
+			console.log('Disconnecting stale transport...', client.clientId, knownSocketId);
+			disconnectPeer(knownSocketId, { preserveClientState: true });
 		}
 	}
 
-	function disconnectPeer(peer: string) {
+	function disconnectPeer(peer: string, options?: { preserveClientState?: boolean }) {
 		console.log('Disconnect peer: ', peer);
 		const connection = peerConnectionsRef.current[peer];
-		const clientId = socketClientsRef.current[peer]?.clientId;
+		const clientId =
+			socketClientsRef.current[peer]?.clientId ??
+			Object.values(clientConnectionsRef.current).find((client) => client.socketId === peer)?.clientId;
 		if (!connection) {
-			if (clientId !== undefined) {
+			if (clientId !== undefined && !options?.preserveClientState) {
 				setOtherVAD((old) => {
 					if (!Object.prototype.hasOwnProperty.call(old, clientId)) {
 						return old;
@@ -593,22 +802,24 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 					delete next[clientId];
 					return next;
 				});
+				clearClientAudioActivity(clientId);
 			}
 			if (Object.prototype.hasOwnProperty.call(socketClientsRef.current, peer)) {
 				const nextClients = { ...socketClientsRef.current };
 				delete nextClients[peer];
-				socketClientsRef.current = nextClients;
-				setSocketClients(nextClients);
+				setClientConnectionMap(nextClients);
 			}
-			clearPeerAudioActivity(peer);
+			if (clientId !== undefined && !options?.preserveClientState) {
+				markClientDisconnected(clientId, peer);
+			}
 			return;
 		}
-		connection.destroy();
 		const nextConnections = { ...peerConnectionsRef.current };
 		delete nextConnections[peer];
 		peerConnectionsRef.current = nextConnections;
 		setPeerConnections(nextConnections);
-		if (clientId !== undefined) {
+		connection.destroy();
+		if (clientId !== undefined && !options?.preserveClientState) {
 			setOtherVAD((old) => {
 				if (!Object.prototype.hasOwnProperty.call(old, clientId)) {
 					return old;
@@ -622,15 +833,18 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 					return old;
 				}
 				const next = { ...old };
-				delete next[clientId];
-				return next;
-			});
+					delete next[clientId];
+					return next;
+				});
+			clearClientAudioActivity(clientId);
 		}
 		if (Object.prototype.hasOwnProperty.call(socketClientsRef.current, peer)) {
 			const nextClients = { ...socketClientsRef.current };
 			delete nextClients[peer];
-			socketClientsRef.current = nextClients;
-			setSocketClients(nextClients);
+			setClientConnectionMap(nextClients);
+		}
+		if (clientId !== undefined && !options?.preserveClientState) {
+			markClientDisconnected(clientId, peer);
 		}
 		disconnectAudioElement(peer);
 	}
@@ -732,10 +946,7 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 						bugged: o.bugged,
 						realColor: playerColors[o.colorId],
 						usingRadio: o.clientId === impostorRadioClientId.current && myPlayer?.isImpostor,
-						connected:
-							(playerSocketIdsRef.current[o.clientId] &&
-								socketClients[playerSocketIdsRef.current[o.clientId]]?.clientId === o.clientId) ||
-							false,
+						connected: clientConnections[o.clientId]?.connected ?? false,
 					})),
 				},
 				otherTalking,
@@ -761,6 +972,10 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 	useEffect(() => {
 		socketClientsRef.current = socketClients;
 	}, [socketClients]);
+
+	useEffect(() => {
+		clientConnectionsRef.current = clientConnections;
+	}, [clientConnections]);
 
 	useEffect(() => {
 		if (
@@ -793,10 +1008,8 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 		() =>
 			({
 				otherTalking,
-				playerSocketIds: playerSocketIdsRef.current,
 				otherDead,
-				socketClients,
-				audioConnected,
+				clientConnections,
 				localTalking: talking,
 				localIsAlive: !myPlayer?.isDead,
 				impostorRadioClientId: !myPlayer?.isImpostor ? -1 : impostorRadioClientId.current,
@@ -804,7 +1017,7 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 				deafened: deafenedState,
 				mod: gameState.mod,
 			}) as VoiceState,
-		[otherTalking, otherDead, socketClients, audioConnected, talking, myPlayer?.isDead, myPlayer?.isImpostor, mutedState, deafenedState, gameState.mod]
+		[otherTalking, otherDead, clientConnections, talking, myPlayer?.isDead, myPlayer?.isImpostor, mutedState, deafenedState, gameState.mod]
 	);
 
 	useEffect(() => {
@@ -950,7 +1163,7 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 		connectionStuff.current.impostorRadio = pressing;
 		impostorRadioClientId.current = pressing ? myPlayer.clientId : -1;
 		for (const player of otherPlayers.filter((o) => o.isImpostor && !o.bugged && !o.isDead)) {
-			const peer = playerSocketIdsRef.current[player.clientId];
+			const peer = clientSocketIdsRef.current[player.clientId];
 			const connection = peerConnectionsRef.current[peer];
 			if (connection !== undefined && connection.writable)
 				connection?.send(JSON.stringify({ impostorRadio: connectionStuff.current.impostorRadio }));
@@ -989,9 +1202,11 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 			resetServerHost();
 			setOtherVAD({});
 			setOtherTalking({});
-			setPeerAudioActivity({});
-			socketClientsRef.current = {};
-			setSocketClients({});
+			setClientAudioActivity({});
+			Object.keys(peerConnectionsRef.current).forEach((peerId) => {
+				disconnectPeer(peerId);
+			});
+			setClientConnectionMap({});
 			currentLobby = 'MENU';
 			console.log('DISCONNECTED??');
 		});
@@ -1032,17 +1247,20 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 				...old,
 				[data.client.clientId]: data.activity,
 			}));
+			upsertClientConnection(data.client.clientId, {
+				socketId: data.socketId,
+				connected: true,
+				lastSeenAt: Date.now(),
+			});
 		});
 
 		socket.on('setClient', (socketId: string, client: Client) => {
-			const nextClients = { ...socketClientsRef.current, [socketId]: client };
-			socketClientsRef.current = nextClients;
-			setSocketClients(nextClients);
+			disconnectClient(client, socketId);
+			setClientConnectionMap({ ...socketClientsRef.current, [socketId]: client });
 		});
 
 		socket.on('setClients', (clients: SocketClientMap) => {
-			socketClientsRef.current = clients;
-			setSocketClients(clients);
+			setClientConnectionMap(clients);
 		});
 
 		// Initialize variables
@@ -1169,12 +1387,11 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 				setOtherTalking({});
 				if (lobbyCode === 'MENU') {
 					resetServerHost();
-					setPeerAudioActivity({});
+					setClientAudioActivity({});
 					Object.keys(peerConnectionsRef.current).forEach((k) => {
 						disconnectPeer(k);
 					});
-					socketClientsRef.current = {};
-					setSocketClients({});
+					setClientConnectionMap({});
 					currentLobby = lobbyCode;
 				} else if (currentLobby !== lobbyCode) {
 					console.log('Currentlobby', currentLobby, lobbyCode);
@@ -1226,12 +1443,14 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 				connection.on('stream', async (stream: MediaStream) => {
 					console.log('ONSTREAM');
 
-					setAudioConnected((old) => ({ ...old, [peer]: true }));
+					const connectedClientId = socketClientsRef.current[peer]?.clientId ?? client?.clientId;
 					const dummyAudio = new Audio();
 					dummyAudio.srcObject = stream;
 					const context = new AudioContext();
 					const source = context.createMediaStreamSource(stream);
 					const dest = context.createMediaStreamDestination();
+					const analyser = context.createAnalyser();
+					analyser.fftSize = 1024;
 
 					const gain = context.createGain();
 					const pan = context.createPanner();
@@ -1245,6 +1464,7 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 					const muffle = context.createBiquadFilter();
 					muffle.type = 'lowpass';
 
+					source.connect(analyser);
 					source.connect(pan);
 					pan.connect(gain);
 
@@ -1267,27 +1487,18 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 						audio.setSinkId(settingsRef.current.speaker);
 					}
 
-					if (peerAudioListeners.current[peer]) {
-						peerAudioListeners.current[peer].destroy();
+					if (connectedClientId !== undefined) {
+						upsertClientConnection(connectedClientId, {
+							socketId: peer,
+							connected: true,
+							audioConnected: true,
+							lastSeenAt: Date.now(),
+						});
+						startPeerAudioMonitor(peer, connectedClientId, analyser);
 					}
-					const incomingAudioListener = VAD(context, source, undefined, {
-						onVoiceStart: () => {
-							setPeerAudioActivity((old) => (old[peer] === true ? old : { ...old, [peer]: true }));
-						},
-						onVoiceStop: () => {
-							setPeerAudioActivity((old) => (old[peer] === false ? old : { ...old, [peer]: false }));
-						},
-						noiseCaptureDuration: 150,
-						minNoiseLevel: 0.08,
-						maxNoiseLevel: 0.35,
-						avgNoiseMultiplier: 1.1,
-						stereo: false,
-					});
-					incomingAudioListener.init();
-					peerAudioListeners.current[peer] = incomingAudioListener;
-
 
 					audioElements.current[peer] = {
+						context,
 						dummyAudioElement: dummyAudio,
 						audioElement: audio,
 						gain,
@@ -1360,8 +1571,8 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 					createPeerConnection(peer, true, client);
 				}
 				if (client) {
-					socketClientsRef.current = { ...socketClientsRef.current, [peer]: client };
-					setSocketClients((old) => ({ ...old, [peer]: client }));
+					disconnectClient(client, peer);
+					setClientConnectionMap({ ...socketClientsRef.current, [peer]: client });
 				}
 			});
 
@@ -1381,8 +1592,8 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 					return;
 				}
 				if (client) {
-					socketClientsRef.current = { ...socketClientsRef.current, [from]: client };
-					setSocketClients((old) => ({ ...old, [from]: client }));
+					disconnectClient(client, from);
+					setClientConnectionMap({ ...socketClientsRef.current, [from]: client });
 				}
 				const normalizedData = normalizeSignalData(data);
 				if (!normalizedData) {
@@ -1446,19 +1657,15 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 		if (maxDistanceRef.current <= 0.6) {
 			maxDistanceRef.current = 1;
 		}
-		const playerSocketIds: numberStringMap = {};
-		for (const k of Object.keys(socketClients)) {
-			playerSocketIds[socketClients[k].clientId] = k;
-		}
-		playerSocketIdsRef.current = playerSocketIds;
 		const handledPeerIds: string[] = [];
 		let foundRadioUser = false;
 		const tempTalking = { ...otherTalking };
 		let talkingUpdate = false;
 		for (const player of otherPlayers) {
-			const peerId = playerSocketIds[player.clientId];
+			const peerId = clientConnections[player.clientId]?.socketId ?? clientSocketIdsRef.current[player.clientId];
 			const audio = player.clientId === myPlayer.clientId ? undefined : audioElements.current[peerId];
-			const localPeerTalking = peerId ? peerAudioActivity[peerId] : false;
+			const remoteAudioState = clientAudioActivity[player.clientId];
+			const localPeerTalking = Boolean(remoteAudioState?.speaking || remoteAudioState?.audible);
 			if (
 				player.clientId === impostorRadioClientId.current &&
 				player.isImpostor &&
@@ -1485,7 +1692,8 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 					gain = gain * (settings.masterVolume / 100);
 				}
 				audio.gain.gain.value = gain;
-				tempTalking[player.clientId] = gain > 0 && Boolean(otherVAD[player.clientId] || localPeerTalking);
+				tempTalking[player.clientId] =
+					gain > 0 && Boolean(otherVAD[player.clientId] || remoteAudioState?.speaking || localPeerTalking);
 				if (tempTalking[player.clientId] != otherTalking[player.clientId]) {
 					talkingUpdate = true;
 				}
@@ -1510,7 +1718,7 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 		}
 
 		return otherPlayers;
-	}, [gameState, lobbySettings, myPlayer, otherTalking, otherVAD, peerAudioActivity, settings, socketClients]);
+	}, [clientAudioActivity, clientConnections, gameState, lobbySettings, myPlayer, otherTalking, otherVAD, settings]);
 
 	// Connect to P2P negotiator, when lobby and connect code change
 	useEffect(() => {
@@ -1552,7 +1760,7 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 			// On change from a game to menu, exit from the current game properly
 			hostRef.current.mobileRunning = false; // On change from a game to menu, exit from the current game properly
 			resetServerHost();
-			setPeerAudioActivity({});
+			setClientAudioActivity({});
 			connectionStuff.current.socket?.emit('leave');
 			Object.keys(peerConnectionsRef.current).forEach((k) => {
 				disconnectPeer(k);
@@ -1677,9 +1885,9 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 						justifyContent="flex-start"
 					>
 						{otherPlayers.map((player) => {
-							const peer = playerSocketIdsRef.current[player.clientId];
-							const connected = socketClients[peer]?.clientId === player.clientId || false;
-							const audio = audioConnected[peer];
+							const clientConnection = clientConnections[player.clientId];
+							const connected = clientConnection?.connected || false;
+							const audio = clientConnection?.audioConnected || false;
 
 							if (!playerConfigs[player.nameHash]) {
 								playerConfigs[player.nameHash] = { volume: 1, isMuted: false };

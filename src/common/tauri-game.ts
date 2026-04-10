@@ -1,8 +1,11 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { AmongUsState } from './AmongUsState';
 
+export type GameSessionPhase = 'detached' | 'attaching' | 'warmup' | 'active' | 'recovering';
+
 export interface GameSessionStatus {
 	isGameOpen: boolean;
+	phase: GameSessionPhase;
 	state: AmongUsState | null;
 }
 
@@ -20,4 +23,8 @@ export async function getPlayerColors(): Promise<string[][]> {
 
 export async function getCurrentMod(): Promise<string> {
 	return invoke<string>('request_mod');
+}
+
+export async function getRegionAliases(): Promise<Record<string, string>> {
+	return invoke<Record<string, string>>('get_region_aliases');
 }

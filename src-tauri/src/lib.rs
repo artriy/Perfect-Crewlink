@@ -2,7 +2,7 @@ mod assets;
 mod game_session;
 mod hotkeys;
 
-use game_session::{AmongUsState, GameSessionManager, GameSessionStatus};
+use game_session::{load_region_aliases, AmongUsState, GameSessionManager, GameSessionStatus};
 use hotkeys::{HotkeyConfig, HotkeyManager};
 use serde::{Deserialize, Serialize};
 use std::sync::{
@@ -113,6 +113,11 @@ fn get_initial_game_state(session: State<'_, GameSessionManager>) -> Option<Amon
 #[tauri::command]
 fn get_player_colors(session: State<'_, GameSessionManager>) -> Vec<[String; 2]> {
     session.snapshot().lock().unwrap().player_colors.clone()
+}
+
+#[tauri::command]
+fn get_region_aliases() -> std::collections::HashMap<String, String> {
+    load_region_aliases(None)
 }
 
 #[tauri::command]
@@ -468,6 +473,7 @@ pub fn run() {
             start_game_session,
             get_initial_game_state,
             get_player_colors,
+            get_region_aliases,
             request_mod,
             generate_avatar_base,
             fetch_offset_lookup,

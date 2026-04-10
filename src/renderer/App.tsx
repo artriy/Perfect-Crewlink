@@ -31,7 +31,7 @@ import { AmongUsState, GameState } from '../common/AmongUsState';
 import { CameraLocation, MapType } from '../common/AmongusMap';
 import { DEFAULT_PLAYERCOLORS } from '../common/playerColors';
 import { OVERLAY_STATE_KEYS, writeOverlayState } from '../common/overlay-state';
-import { getInitialGameState, getPlayerColors, startGameSession } from '../common/tauri-game';
+import { GameSessionPhase, getInitialGameState, getPlayerColors, startGameSession } from '../common/tauri-game';
 import { getAppVersion, getInitialAppVersion } from '../common/appVersion';
 import { ISettings } from '../common/ISettings';
 import { bridge } from './bridge';
@@ -54,6 +54,14 @@ function hasResolvedGameState(nextState: AmongUsState | null | undefined): nextS
 	return Boolean(nextState) && nextState.gameState !== GameState.UNKNOWN;
 }
 
+function isActiveSessionPhase(phase: GameSessionPhase): boolean {
+	return phase === 'active';
+}
+
+function isStickySessionPhase(phase: GameSessionPhase): boolean {
+	return phase === 'warmup' || phase === 'recovering';
+}
+
 const EMPTY_GAME_STATE: AmongUsState = {
 	gameState: GameState.UNKNOWN,
 	oldGameState: GameState.UNKNOWN,
@@ -70,6 +78,7 @@ const EMPTY_GAME_STATE: AmongUsState = {
 	lightRadiusChanged: false,
 	closedDoors: [],
 	currentServer: '',
+	currentServerLabel: '',
 	maxPlayers: 0,
 	mod: 'NONE',
 	oldMeetingHud: false,
@@ -182,6 +191,8 @@ export default function App(): JSX.Element {
 	const syncInFlight = useRef(false);
 	const mainWindowShown = useRef(false);
 	const gameOpenRef = useRef(false);
+	const sessionPhaseRef = useRef<GameSessionPhase>('detached');
+	const stateRef = useRef(state);
 	const [settings, setSettings] = useState(SettingsStore.store);
 	const [hostLobbySettings, setHostLobbySettings] = useState(settings.localLobbySettings);
 	const settingsRef = useRef(settings);
@@ -227,6 +238,10 @@ export default function App(): JSX.Element {
 			setSettings(newValue as ISettings);
 		});
 	}, []);
+
+	useEffect(() => {
+		stateRef.current = state;
+	}, [state]);
 
 	useEffect(() => {
 		settingsRef.current = settings;
@@ -283,7 +298,9 @@ export default function App(): JSX.Element {
 					return;
 				}
 
-				if (!session.isGameOpen) {
+				sessionPhaseRef.current = session.phase;
+
+				if (!session.isGameOpen || session.phase === 'detached') {
 					gameOpenRef.current = false;
 					bridge.send('hideWindow', true);
 					setState(AppState.MENU);
@@ -292,23 +309,42 @@ export default function App(): JSX.Element {
 					return;
 				}
 
-				let nextState = session.state ?? (await getInitialGameState());
-				for (let attempt = 0; attempt < 20 && !hasResolvedGameState(nextState) && shouldInit; attempt += 1) {
-					await sleep(250);
+				gameOpenRef.current = true;
+
+				const hadStableVoiceState =
+					stateRef.current === AppState.VOICE && hasResolvedGameState(gameStateRef.current);
+
+				let nextState = session.state;
+				if (!hasResolvedGameState(nextState) && session.phase !== 'attaching') {
 					nextState = await getInitialGameState();
+					for (
+						let attempt = 0;
+						attempt < 20 && !hasResolvedGameState(nextState) && shouldInit && sessionPhaseRef.current !== 'detached';
+						attempt += 1
+					) {
+						await sleep(250);
+						nextState = await getInitialGameState();
+					}
 				}
 
 				if (!shouldInit) {
 					return;
 				}
 
-				if (hasResolvedGameState(nextState)) {
-					gameOpenRef.current = true;
+				if (isActiveSessionPhase(session.phase) && hasResolvedGameState(nextState)) {
 					setState(AppState.VOICE);
 					setGameState(nextState);
 					void ensurePlayerColors(nextState);
 					setError('');
+					return;
 				}
+
+				if (hadStableVoiceState && isStickySessionPhase(session.phase)) {
+					setError('');
+					return;
+				}
+
+				setState(AppState.MENU);
 			} catch (sessionError) {
 				if (!shouldInit) {
 					return;
@@ -321,8 +357,9 @@ export default function App(): JSX.Element {
 		};
 
 		const onOpen = (_: unknown, isOpen: boolean) => {
-			gameOpenRef.current = isOpen;
 			if (!isOpen) {
+				gameOpenRef.current = false;
+				sessionPhaseRef.current = 'detached';
 				bridge.send('hideWindow', true);
 				setState(AppState.MENU);
 				setGameState(EMPTY_GAME_STATE);
@@ -336,6 +373,15 @@ export default function App(): JSX.Element {
 			if (!gameOpenRef.current) {
 				return;
 			}
+
+			if (sessionPhaseRef.current === 'attaching' || sessionPhaseRef.current === 'detached') {
+				return;
+			}
+
+			if (sessionPhaseRef.current !== 'active' && stateRef.current !== AppState.VOICE) {
+				return;
+			}
+
 			setState(AppState.VOICE);
 			setGameState(newState);
 			void ensurePlayerColors(newState);
