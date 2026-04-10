@@ -24,6 +24,7 @@ import SettingsStore from '../settings/SettingsStore';
 const serverUrl = SettingsStore.get('serverURL', 'https://bettercrewl.ink/');
 const language = SettingsStore.get('language', 'en');
 const SETTINGS_STORAGE_KEY = 'perfectcrewlink.settings';
+const LOBBY_CODE_RETRY_DELAY_MS = 2500;
 i18next.changeLanguage(language);
 
 const StyledTableCell = withStyles((theme) => ({
@@ -126,11 +127,12 @@ function getModName(mod: string): string {
 }
 
 function getServerLabel(server: string): string {
-	if (!server) {
+	const normalizedServer = server?.trim();
+	if (!normalizedServer) {
 		return 'Unknown Region';
 	}
 
-	return servers[server] ?? server;
+	return servers[normalizedServer] ?? normalizedServer;
 }
 
 function normalizeLobbyCode(value: string | null | undefined): string | null {
@@ -142,7 +144,7 @@ interface LobbyCodePreview {
 	code: string | null;
 	region: string;
 	available: boolean;
-	reason?: 'blocked_incompatible' | 'incompatible' | 'retrying' | 'unavailable';
+	reason?: 'blocked_incompatible' | 'incompatible' | 'retrying' | 'unavailable' | 'stale_listing';
 }
 
 interface LobbyBrowserProps {
@@ -161,6 +163,7 @@ export default function LobbyBrowser({ t }: LobbyBrowserProps) {
 	);
 	const [, forceRender] = useState({});
 	const pendingCodeRequests = useRef<Set<number>>(new Set());
+	const retryTimeouts = useRef<Record<number, number>>({});
 
 	const [mod, setMod] = useState<ModsType>('NONE');
 	const languageNames = languages as Record<string, { name?: string }>;
@@ -189,6 +192,15 @@ export default function LobbyBrowser({ t }: LobbyBrowserProps) {
 
 		s.on('update_lobby', (lobby: PublicLobby) => {
 			setPublicLobbies((old) => ({ ...old, [lobby.id]: lobby }));
+			setLobbyCodes((old) => {
+				const existingPreview = old[lobby.id];
+				if (!existingPreview || existingPreview.available || existingPreview.reason === 'blocked_incompatible') {
+					return old;
+				}
+				const next = { ...old };
+				delete next[lobby.id];
+				return next;
+			});
 		});
 
 		s.on('new_lobbies', (lobbies: PublicLobby[]) => {
@@ -198,6 +210,19 @@ export default function LobbyBrowser({ t }: LobbyBrowserProps) {
 					lobbyMap[lobbies[index].id] = lobbies[index];
 				}
 				return lobbyMap;
+			});
+			setLobbyCodes((old) => {
+				let changed = false;
+				const next = { ...old };
+				for (const lobby of lobbies) {
+					const existingPreview = next[lobby.id];
+					if (!existingPreview || existingPreview.available || existingPreview.reason === 'blocked_incompatible') {
+						continue;
+					}
+					delete next[lobby.id];
+					changed = true;
+				}
+				return changed ? next : old;
 			});
 		});
 		s.on('remove_lobby', (lobbyId: number) => {
@@ -214,6 +239,8 @@ export default function LobbyBrowser({ t }: LobbyBrowserProps) {
 				return next;
 			});
 			pendingCodeRequests.current.delete(lobbyId);
+			window.clearTimeout(retryTimeouts.current[lobbyId]);
+			delete retryTimeouts.current[lobbyId];
 		});
 		s.on('connect', () => {
 			s.emit('lobbybrowser', true);
@@ -227,6 +254,10 @@ export default function LobbyBrowser({ t }: LobbyBrowserProps) {
 			s.close();
 			clearInterval(secondPassed);
 			pendingCodeRequests.current.clear();
+			for (const timeoutId of Object.values(retryTimeouts.current)) {
+				window.clearTimeout(timeoutId);
+			}
+			retryTimeouts.current = {};
 			window.removeEventListener('storage', handleStorage);
 		};
 	}, []);
@@ -237,6 +268,10 @@ export default function LobbyBrowser({ t }: LobbyBrowserProps) {
 		}
 
 		pendingCodeRequests.current.clear();
+		for (const timeoutId of Object.values(retryTimeouts.current)) {
+			window.clearTimeout(timeoutId);
+		}
+		retryTimeouts.current = {};
 		setCopiedLobbyId(null);
 		setLobbyCodes({});
 	}, [showLobbyCode]);
@@ -293,7 +328,14 @@ export default function LobbyBrowser({ t }: LobbyBrowserProps) {
 				pendingCodeRequests.current.delete(lobby.id);
 				const normalizedError = (codeOrError ?? '').toLowerCase();
 				const isIncompatibleResponse = normalizedError.includes('incompatible');
+				const isStaleListingResponse =
+					normalizedError.includes('not public anymore') ||
+					normalizedError.includes('not public') ||
+					normalizedError.includes('not found') ||
+					normalizedError.includes('does not exist');
 				const returnedCode = normalizeLobbyCode(codeOrError);
+				window.clearTimeout(retryTimeouts.current[lobby.id]);
+				delete retryTimeouts.current[lobby.id];
 
 				if (state !== 0 && ignoreIncompatibleMods && isIncompatibleResponse) {
 					setLobbyCodes((old) => ({
@@ -305,7 +347,7 @@ export default function LobbyBrowser({ t }: LobbyBrowserProps) {
 							reason: 'retrying',
 						},
 					}));
-					window.setTimeout(() => {
+					retryTimeouts.current[lobby.id] = window.setTimeout(() => {
 						setLobbyCodes((old) => {
 							if (old[lobby.id]?.reason !== 'retrying') {
 								return old;
@@ -314,7 +356,53 @@ export default function LobbyBrowser({ t }: LobbyBrowserProps) {
 							delete next[lobby.id];
 							return next;
 						});
-					}, 2000);
+						delete retryTimeouts.current[lobby.id];
+					}, LOBBY_CODE_RETRY_DELAY_MS);
+					return;
+				}
+
+				if (state !== 0 && !returnedCode && isStaleListingResponse) {
+					setPublicLobbies((old) => {
+						if (!(lobby.id in old)) {
+							return old;
+						}
+						const next = { ...old };
+						delete next[lobby.id];
+						return next;
+					});
+					setLobbyCodes((old) => {
+						if (!(lobby.id in old)) {
+							return old;
+						}
+						const next = { ...old };
+						delete next[lobby.id];
+						return next;
+					});
+					return;
+				}
+
+				if (state !== 0 && !returnedCode) {
+					setLobbyCodes((old) => ({
+						...old,
+						[lobby.id]: {
+							code: null,
+							region: getServerLabel(String(server || lobby.server)),
+							available: false,
+							reason: isIncompatibleResponse ? 'incompatible' : 'unavailable',
+						},
+					}));
+					retryTimeouts.current[lobby.id] = window.setTimeout(() => {
+						setLobbyCodes((old) => {
+							const existingPreview = old[lobby.id];
+							if (!existingPreview || existingPreview.available || existingPreview.reason === 'blocked_incompatible') {
+								return old;
+							}
+							const next = { ...old };
+							delete next[lobby.id];
+							return next;
+						});
+						delete retryTimeouts.current[lobby.id];
+					}, LOBBY_CODE_RETRY_DELAY_MS);
 					return;
 				}
 

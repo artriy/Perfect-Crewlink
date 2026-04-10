@@ -181,6 +181,7 @@ export default function App(): JSX.Element {
 	const playerColorSyncInFlight = useRef(false);
 	const syncInFlight = useRef(false);
 	const mainWindowShown = useRef(false);
+	const gameOpenRef = useRef(false);
 	const [settings, setSettings] = useState(SettingsStore.store);
 	const [hostLobbySettings, setHostLobbySettings] = useState(settings.localLobbySettings);
 	const settingsRef = useRef(settings);
@@ -283,6 +284,8 @@ export default function App(): JSX.Element {
 				}
 
 				if (!session.isGameOpen) {
+					gameOpenRef.current = false;
+					bridge.send('hideWindow', true);
 					setState(AppState.MENU);
 					setGameState(EMPTY_GAME_STATE);
 					setError('');
@@ -300,6 +303,7 @@ export default function App(): JSX.Element {
 				}
 
 				if (hasResolvedGameState(nextState)) {
+					gameOpenRef.current = true;
 					setState(AppState.VOICE);
 					setGameState(nextState);
 					void ensurePlayerColors(nextState);
@@ -317,15 +321,21 @@ export default function App(): JSX.Element {
 		};
 
 		const onOpen = (_: unknown, isOpen: boolean) => {
+			gameOpenRef.current = isOpen;
 			if (!isOpen) {
+				bridge.send('hideWindow', true);
 				setState(AppState.MENU);
 				setGameState(EMPTY_GAME_STATE);
+				setError('');
 				return;
 			}
 
 			void syncGameSessionState();
 		};
 		const onState = (_: unknown, newState: AmongUsState) => {
+			if (!gameOpenRef.current) {
+				return;
+			}
 			setState(AppState.VOICE);
 			setGameState(newState);
 			void ensurePlayerColors(newState);

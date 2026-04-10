@@ -53,6 +53,8 @@
 - <img src="https://img.shields.io/badge/FIXED-C51111?style=flat-square"/> &nbsp; Overlay visibility now correctly bound to Among Us being in focus
 - <img src="https://img.shields.io/badge/FIXED-C51111?style=flat-square"/> &nbsp; Taskbar and alt-tab issues caused by incorrect overlay window behavior
 - <img src="https://img.shields.io/badge/NEW-2ed573?style=flat-square"/> &nbsp; Better foreground-window tracking — overlay hides immediately outside the game
+- <img src="https://img.shields.io/badge/FIXED-C51111?style=flat-square"/> &nbsp; Overlay state now resyncs after alt-tab and focus restore, so speaking badges stop jumping onto the wrong player
+- <img src="https://img.shields.io/badge/IMPROVED-ffa502?style=flat-square"/> &nbsp; Quieter audible speakers now light the overlay more reliably instead of requiring noticeably louder voice levels
 - <img src="https://img.shields.io/badge/NEW-2ed573?style=flat-square"/> &nbsp; Overlay layouts: **top center without background** and **top center with background**
 - <img src="https://img.shields.io/badge/CHANGED-ffa502?style=flat-square"/> &nbsp; Default avatar overlay now shows only talking players
 - <img src="https://img.shields.io/badge/NEW-2ed573?style=flat-square"/> &nbsp; Option to restore the old always-show-all-players overlay behavior
@@ -114,6 +116,8 @@
 - <img src="https://img.shields.io/badge/NEW-2ed573?style=flat-square"/> &nbsp; Learned lobby codes preserved when a tracked room flips from lobby into in-game
 - <img src="https://img.shields.io/badge/NEW-2ed573?style=flat-square"/> &nbsp; `Ignore Incompatible Lobby Mods` toggle — incompatible-mod filtering is opt-out by default
 - <img src="https://img.shields.io/badge/IMPROVED-ffa502?style=flat-square"/> &nbsp; Smarter retry behavior for false incompatible responses
+- <img src="https://img.shields.io/badge/FIXED-C51111?style=flat-square"/> &nbsp; Stale public-list rows that were no longer actually joinable no longer sit in the browser as fake `UNAVAILABLE` entries
+- <img src="https://img.shields.io/badge/IMPROVED-ffa502?style=flat-square"/> &nbsp; Transient code lookup failures now retry automatically instead of getting cached forever
 - <img src="https://img.shields.io/badge/FIXED-C51111?style=flat-square"/> &nbsp; Privacy path: `Show Lobby Code` now governs the lobby browser as well
 
 <img src="static/images/divider.svg" width="100%" alt="divider"/>
@@ -132,6 +136,7 @@
 
 - <img src="https://img.shields.io/badge/FIXED-C51111?style=flat-square"/> &nbsp; Hardened startup reads in the native Among Us session worker — early memory-read failures no longer kill the session immediately
 - <img src="https://img.shields.io/badge/IMPROVED-ffa502?style=flat-square"/> &nbsp; Attach behavior after third-party edits regressed native session startup
+- <img src="https://img.shields.io/badge/FIXED-C51111?style=flat-square"/> &nbsp; Closing Among Us now reliably returns Perfect Crewlink to the waiting screen instead of leaving it stranded on the public-lobbies flow
 - <img src="https://img.shields.io/badge/IMPROVED-ffa502?style=flat-square"/> &nbsp; Cleaned up temporary debug-only tracing after fixes were verified
 
 <img src="static/images/divider.svg" width="100%" alt="divider"/>

@@ -264,11 +264,13 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 	} | null>(null);
 	const [otherTalking, setOtherTalking] = useState<ClientBoolMap>({});
 	const [otherVAD, setOtherVAD] = useState<ClientBoolMap>({});
+	const [peerAudioActivity, setPeerAudioActivity] = useState<Record<string, boolean>>({});
 
 	const [otherDead, setOtherDead] = useState<ClientBoolMap>({});
 	const impostorRadioClientId = useRef<number>(-1);
 
 	const audioElements = useRef<AudioElements>({});
+	const peerAudioListeners = useRef<Record<string, VadNode>>({});
 	const [audioConnected, setAudioConnected] = useState<AudioConnected>({});
 
 	const [deafenedState, setDeafened] = useState(settings.startDeafened);
@@ -293,6 +295,17 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 	const resetServerHost = () => {
 		hostRef.current.serverHostId = 0;
 		setServerHostId(0);
+	};
+
+	const clearPeerAudioActivity = (peer: string) => {
+		setPeerAudioActivity((old) => {
+			if (!Object.prototype.hasOwnProperty.call(old, peer)) {
+				return old;
+			}
+			const next = { ...old };
+			delete next[peer];
+			return next;
+		});
 	};
 
 	const resolvedHostId = gameState.hostId > 0 ? gameState.hostId : serverHostId;
@@ -530,6 +543,11 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 		element.remove();
 	}
 	function disconnectAudioElement(peer: string) {
+		if (peerAudioListeners.current[peer]) {
+			peerAudioListeners.current[peer].destroy();
+			delete peerAudioListeners.current[peer];
+		}
+		clearPeerAudioActivity(peer);
 		if (audioElements.current[peer]) {
 			console.log('removing element..');
 			disconnectAudioHtmlElement(audioElements.current[peer].audioElement);
@@ -556,7 +574,33 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 	function disconnectPeer(peer: string) {
 		console.log('Disconnect peer: ', peer);
 		const connection = peerConnectionsRef.current[peer];
+		const clientId = socketClientsRef.current[peer]?.clientId;
 		if (!connection) {
+			if (clientId !== undefined) {
+				setOtherVAD((old) => {
+					if (!Object.prototype.hasOwnProperty.call(old, clientId)) {
+						return old;
+					}
+					const next = { ...old };
+					delete next[clientId];
+					return next;
+				});
+				setOtherTalking((old) => {
+					if (!Object.prototype.hasOwnProperty.call(old, clientId)) {
+						return old;
+					}
+					const next = { ...old };
+					delete next[clientId];
+					return next;
+				});
+			}
+			if (Object.prototype.hasOwnProperty.call(socketClientsRef.current, peer)) {
+				const nextClients = { ...socketClientsRef.current };
+				delete nextClients[peer];
+				socketClientsRef.current = nextClients;
+				setSocketClients(nextClients);
+			}
+			clearPeerAudioActivity(peer);
 			return;
 		}
 		connection.destroy();
@@ -564,6 +608,30 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 		delete nextConnections[peer];
 		peerConnectionsRef.current = nextConnections;
 		setPeerConnections(nextConnections);
+		if (clientId !== undefined) {
+			setOtherVAD((old) => {
+				if (!Object.prototype.hasOwnProperty.call(old, clientId)) {
+					return old;
+				}
+				const next = { ...old };
+				delete next[clientId];
+				return next;
+			});
+			setOtherTalking((old) => {
+				if (!Object.prototype.hasOwnProperty.call(old, clientId)) {
+					return old;
+				}
+				const next = { ...old };
+				delete next[clientId];
+				return next;
+			});
+		}
+		if (Object.prototype.hasOwnProperty.call(socketClientsRef.current, peer)) {
+			const nextClients = { ...socketClientsRef.current };
+			delete nextClients[peer];
+			socketClientsRef.current = nextClients;
+			setSocketClients(nextClients);
+		}
 		disconnectAudioElement(peer);
 	}
 	// Handle pushToTalk, if set
@@ -705,11 +773,13 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 					: 1;
 
 			if (connectionStuff.current?.audioListener?.options) {
-				connectionStuff.current.audioListener.options.minNoiseLevel = settings.micSensitivity;
+				connectionStuff.current.audioListener.options.minNoiseLevel = settings.micSensitivityEnabled
+					? settings.micSensitivity
+					: 0.15;
 				connectionStuff.current.audioListener.init();
 			}
 		}
-	}, [settings.microphoneGain, settings.micSensitivity]);
+	}, [settings.microphoneGain, settings.microphoneGainEnabled, settings.micSensitivity, settings.micSensitivityEnabled]);
 
 	const myPlayer = useMemo(() => {
 		if (!gameState || !gameState.players) {
@@ -917,6 +987,11 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 		socket.on('disconnect', () => {
 			setConnected(false);
 			resetServerHost();
+			setOtherVAD({});
+			setOtherTalking({});
+			setPeerAudioActivity({});
+			socketClientsRef.current = {};
+			setSocketClients({});
 			currentLobby = 'MENU';
 			console.log('DISCONNECTED??');
 		});
@@ -1094,9 +1169,11 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 				setOtherTalking({});
 				if (lobbyCode === 'MENU') {
 					resetServerHost();
+					setPeerAudioActivity({});
 					Object.keys(peerConnectionsRef.current).forEach((k) => {
 						disconnectPeer(k);
 					});
+					socketClientsRef.current = {};
 					setSocketClients({});
 					currentLobby = lobbyCode;
 				} else if (currentLobby !== lobbyCode) {
@@ -1189,6 +1266,25 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 					if (settingsRef.current.speaker.toLowerCase() !== 'default') {
 						audio.setSinkId(settingsRef.current.speaker);
 					}
+
+					if (peerAudioListeners.current[peer]) {
+						peerAudioListeners.current[peer].destroy();
+					}
+					const incomingAudioListener = VAD(context, source, undefined, {
+						onVoiceStart: () => {
+							setPeerAudioActivity((old) => (old[peer] === true ? old : { ...old, [peer]: true }));
+						},
+						onVoiceStop: () => {
+							setPeerAudioActivity((old) => (old[peer] === false ? old : { ...old, [peer]: false }));
+						},
+						noiseCaptureDuration: 150,
+						minNoiseLevel: 0.08,
+						maxNoiseLevel: 0.35,
+						avgNoiseMultiplier: 1.1,
+						stereo: false,
+					});
+					incomingAudioListener.init();
+					peerAudioListeners.current[peer] = incomingAudioListener;
 
 
 					audioElements.current[peer] = {
@@ -1362,6 +1458,7 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 		for (const player of otherPlayers) {
 			const peerId = playerSocketIds[player.clientId];
 			const audio = player.clientId === myPlayer.clientId ? undefined : audioElements.current[peerId];
+			const localPeerTalking = peerId ? peerAudioActivity[peerId] : false;
 			if (
 				player.clientId === impostorRadioClientId.current &&
 				player.isImpostor &&
@@ -1388,7 +1485,7 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 					gain = gain * (settings.masterVolume / 100);
 				}
 				audio.gain.gain.value = gain;
-				tempTalking[player.clientId] = otherVAD[player.clientId] && gain > 0;
+				tempTalking[player.clientId] = gain > 0 && Boolean(otherVAD[player.clientId] || localPeerTalking);
 				if (tempTalking[player.clientId] != otherTalking[player.clientId]) {
 					talkingUpdate = true;
 				}
@@ -1404,7 +1501,7 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 		) {
 			impostorRadioClientId.current = -1;
 		}
-		for (const peerId in Object.keys(audioElements.current).filter((e) => !handledPeerIds.includes(e))) {
+		for (const peerId of Object.keys(audioElements.current).filter((e) => !handledPeerIds.includes(e))) {
 			const audio = audioElements.current[peerId];
 			if (audio && audio.gain) {
 				audio.gain.gain.value = 0;
@@ -1413,7 +1510,7 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 		}
 
 		return otherPlayers;
-	}, [gameState]);
+	}, [gameState, lobbySettings, myPlayer, otherTalking, otherVAD, peerAudioActivity, settings, socketClients]);
 
 	// Connect to P2P negotiator, when lobby and connect code change
 	useEffect(() => {
@@ -1455,6 +1552,7 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 			// On change from a game to menu, exit from the current game properly
 			hostRef.current.mobileRunning = false; // On change from a game to menu, exit from the current game properly
 			resetServerHost();
+			setPeerAudioActivity({});
 			connectionStuff.current.socket?.emit('leave');
 			Object.keys(peerConnectionsRef.current).forEach((k) => {
 				disconnectPeer(k);
