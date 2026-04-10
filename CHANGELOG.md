@@ -71,6 +71,36 @@
 
 <img src="static/images/divider.svg" width="100%" alt="divider"/>
 
+### <img src="https://img.shields.io/badge/-PACKAGING-2ed573?style=flat-square" height="22"/>
+
+<table>
+<tr>
+<td align="center" width="33%">
+
+<img src="https://img.shields.io/badge/Windows-Portable-0078D4?style=for-the-badge&logo=windows11&logoColor=white" alt="Portable"/>
+
+`perfectcrewlink.exe`
+
+</td>
+<td align="center" width="33%">
+
+<img src="https://img.shields.io/badge/Windows-Installer-0078D4?style=for-the-badge&logo=windows11&logoColor=white" alt="Installer"/>
+
+`Perfect.Crewlink_1.0.1_x64-setup.exe`
+
+</td>
+<td align="center" width="33%">
+
+<img src="https://img.shields.io/badge/Linux-Source_Build-FCC624?style=for-the-badge&logo=linux&logoColor=black" alt="Linux"/>
+
+See the README build guide
+
+</td>
+</tr>
+</table>
+
+<img src="static/images/divider.svg" width="100%" alt="divider"/>
+
 <div align="center">
 
 <img src="static/images/footer.svg" width="100%" alt="footer"/>
