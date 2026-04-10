@@ -346,6 +346,6 @@ Distributed under the **GNU General Public License v3.0**. See [LICENSE](LICENSE
 
 <br/>
 
-<sub><strong>Perfect Crewlink</strong> &middot; Built for the crew &middot; v1.0.0</sub>
+<sub><strong>Perfect Crewlink</strong> &middot; Built for the crew</sub>
 
 </div>

@@ -6,17 +6,17 @@
 
 <img src="static/images/divider.svg" width="100%" alt="divider"/>
 
-# <img src="https://img.shields.io/badge/v1.0.0-C51111?style=for-the-badge&logo=rocket&logoColor=white" alt="v1.0.0"/> &nbsp; First Launch
+# <img src="https://img.shields.io/badge/v1.0.1-C51111?style=for-the-badge&logo=rocket&logoColor=white" alt="v1.0.1"/> &nbsp; Overlay & Lobby Update
 
 <p>
-<img src="https://img.shields.io/badge/RELEASED-2026--04--09-24C8DB?style=for-the-badge" alt="released"/>
+<img src="https://img.shields.io/badge/RELEASED-2026--04--10-24C8DB?style=for-the-badge" alt="released"/>
 &nbsp;
 <img src="https://img.shields.io/badge/STATUS-STABLE-2ed573?style=for-the-badge" alt="stable"/>
 &nbsp;
 <img src="https://img.shields.io/badge/PLATFORM-Windows_%2B_Linux-8b5cf6?style=for-the-badge" alt="platform"/>
 </p>
 
-> **Perfect Crewlink v1.0.0** is the first full release — built on a modern desktop stack with dedicated branding, cleaner packaging, and a sweeping pass across overlay behavior, mod support, public lobbies, and day-to-day usability.
+> **Perfect Crewlink v1.0.1** is the first patch update for the desktop release — tightening overlay reliability, voice-state behavior, and public-lobby accuracy while keeping the full feature set from launch.
 
 <img src="static/images/divider.svg" width="100%" alt="divider"/>
 
@@ -156,7 +156,7 @@
 
 <img src="https://img.shields.io/badge/Windows-Installer-0078D4?style=for-the-badge&logo=windows11&logoColor=white" alt="Installer"/>
 
-`Perfect.Crewlink_1.0.0_x64-setup.exe`
+`Perfect.Crewlink_1.0.1_x64-setup.exe`
 
 </td>
 <td align="center" width="33%">
@@ -175,7 +175,7 @@ See the README build guide
 
 > Perfect Crewlink remains compatible with the BetterCrewLink ecosystem while shipping as its own standalone desktop client.
 
-> Legacy BetterCrewLink history remains upstream; the Perfect Crewlink changelog starts here at `v1.0.0`.
+> Legacy BetterCrewLink history remains upstream; Perfect Crewlink release history now continues from `v1.0.0` into `v1.0.1`.
 
 <br/>
 
@@ -185,6 +185,6 @@ See the README build guide
 
 <br/>
 
-<sub><strong>Perfect Crewlink</strong> &middot; Changelog v1.0.0 &middot; 2026-04-09</sub>
+<sub><strong>Perfect Crewlink</strong> &middot; Changelog v1.0.1 &middot; 2026-04-10</sub>
 
 </div>
