@@ -6,7 +6,7 @@ import ReactDOM from 'react-dom';
 import makeStyles from '@mui/styles/makeStyles';
 import './css/overlay.css';
 import Avatar from './Avatar';
-import { ISettings } from '../common/ISettings';
+import { AleLuduColumnTuning, AleLuduTuning, ISettings } from '../common/ISettings';
 import { DEFAULT_PLAYERCOLORS } from '../common/playerColors';
 import { OVERLAY_STATE_KEYS, readOverlayState } from '../common/overlay-state';
 import SettingsStore from './settings/SettingsStore';
@@ -17,6 +17,19 @@ interface UseStylesProps {
 	width: number;
 	oldHud: boolean;
 	aleLuduMode: boolean;
+	aleLuduColumns: number;
+	aleLuduRows: number;
+	aleLuduContainerHeight: string;
+	// aleLudu-only: explicit meetingHud rect overrides (% of viewport)
+	mhLeftPct: number;
+	mhTopPct: number;
+	mhWidthPct: number;
+	mhHeightPct: number;
+	// aleLudu-only: tablet rect override (% of meetingHud)
+	tabletLeftPct: number;
+	tabletTopPct: number;
+	tabletWidthPct: number;
+	tabletHeightPct: number;
 }
 
 export interface playerContainerCss extends CSSProperties {
@@ -26,29 +39,35 @@ export interface playerContainerCss extends CSSProperties {
 const useStyles = makeStyles(() => ({
 	meetingHud: {
 		position: 'absolute',
-		top: '50%',
-		left: '50%',
-		width: ({ width }: UseStylesProps) => width,
-		height: ({ height }: UseStylesProps) => height,
-		transform: 'translate(-50%, -50%)',
+		// aleLudu-mode: explicit rect as % of viewport (tunable in Settings panel).
+		// legacy / non-aleLudu: keep centered-with-computed-pixel-size behavior.
+		top: ({ aleLuduMode, mhTopPct }: UseStylesProps) => (aleLuduMode ? `${mhTopPct}%` : '50%'),
+		left: ({ aleLuduMode, mhLeftPct }: UseStylesProps) => (aleLuduMode ? `${mhLeftPct}%` : '50%'),
+		width: ({ aleLuduMode, mhWidthPct, width }: UseStylesProps) => (aleLuduMode ? `${mhWidthPct}%` : width),
+		height: ({ aleLuduMode, mhHeightPct, height }: UseStylesProps) => (aleLuduMode ? `${mhHeightPct}%` : height),
+		transform: ({ aleLuduMode }: UseStylesProps) => (aleLuduMode ? 'none' : 'translate(-50%, -50%)'),
 	},
 	tabletContainer: {
-		width: ({ oldHud }: UseStylesProps) => (oldHud ? '88.45%' : '100%'),
-		height: ({ aleLuduMode, oldHud }: UseStylesProps) => (oldHud ? '10.5%' : aleLuduMode ? '7.875%' : '10.5%'),
-		left: ({ oldHud }: UseStylesProps) => (oldHud ? '4.7%' : '0.4%'),
-		top: ({ oldHud }: UseStylesProps) => (oldHud ? '18.4703%' : '15%'),
+		width: ({ oldHud, aleLuduMode, tabletWidthPct }: UseStylesProps) =>
+			oldHud ? '88.45%' : aleLuduMode ? `${tabletWidthPct}%` : '100%',
+		height: ({ aleLuduMode, oldHud, tabletHeightPct }: UseStylesProps) =>
+			oldHud ? '10.5%' : aleLuduMode ? `${tabletHeightPct}%` : '10.5%',
+		left: ({ oldHud, aleLuduMode, tabletLeftPct }: UseStylesProps) =>
+			oldHud ? '4.7%' : aleLuduMode ? `${tabletLeftPct}%` : '0.4%',
+		top: ({ oldHud, aleLuduMode, tabletTopPct }: UseStylesProps) =>
+			oldHud ? '18.4703%' : aleLuduMode ? `${tabletTopPct}%` : '15%',
 		position: 'absolute',
-		display: 'flex',
-		flexWrap: 'wrap',
+		display: ({ aleLuduMode }: UseStylesProps) => (aleLuduMode ? 'block' : 'flex'),
+		flexWrap: ({ aleLuduMode }: UseStylesProps) => (aleLuduMode ? undefined : 'wrap'),
 	},
 	playerContainer: {
-		width: ({ aleLuduMode, oldHud }: UseStylesProps) => (oldHud ? '46.41%' : aleLuduMode ? '22.5%' : '30%'),
-		height: ({ aleLuduMode, oldHud }: UseStylesProps) => (oldHud ? '100%' : aleLuduMode ? '81.75%' : '109%'),
+		width: ({ aleLuduMode, oldHud }: UseStylesProps) => (oldHud ? '46.41%' : aleLuduMode ? '100%' : '30%'),
+		height: ({ aleLuduMode, oldHud }: UseStylesProps) => (oldHud ? '100%' : aleLuduMode ? '100%' : '109%'),
 		borderRadius: ({ height }: UseStylesProps) => height / 100,
 		transition: 'opacity .1s linear',
-		marginBottom: ({ aleLuduMode, oldHud }: UseStylesProps) => (oldHud ? '2%' : aleLuduMode ? '1.425%' : '1.9%'),
-		marginRight: ({ aleLuduMode, oldHud }: UseStylesProps) => (oldHud ? '2.34%' : aleLuduMode ? '0.1725%' : '0.23%'),
-		marginLeft: ({ aleLuduMode, oldHud }: UseStylesProps) => (oldHud ? '0%' : aleLuduMode ? '1.8%' : '2.4%'),
+		marginBottom: ({ aleLuduMode, oldHud }: UseStylesProps) => (oldHud ? '2%' : aleLuduMode ? 0 : '1.9%'),
+		marginRight: ({ aleLuduMode, oldHud }: UseStylesProps) => (oldHud ? '2.34%' : aleLuduMode ? 0 : '0.23%'),
+		marginLeft: ({ aleLuduMode, oldHud }: UseStylesProps) => (oldHud ? '0%' : aleLuduMode ? 0 : '2.4%'),
 		boxSizing: 'border-box',
 	},
 }));
@@ -81,6 +100,131 @@ function useWindowSize() {
 }
 
 const iPadRatio = 854 / 579;
+
+const ALE_LUDU_COLUMNS = 4;
+
+// Default tuning — matches the SettingsStore default. Live values come from
+// settings.aleLuduTuning (user-tunable in the Settings page). The mod's actual
+// world-space formula is:
+//    pos = VoteOrigin + (dx*col*0.75 - 0.375, dy*row*0.75, z)  with scale = 0.75
+// We don't have VoteOrigin / VoteButtonOffsets at runtime, so the user dials
+// the equivalent %-of-meetingHud values plus the meetingHud/tablet rect
+// overrides (% of viewport / % of meetingHud respectively) in the Settings panel.
+// Live-calibrated defaults from the in-game AleLudu meeting overlay session.
+// The legacy single-knob fields below are kept for the resolveColumnTuning fallback
+// (when a saved config predates per-column data); the actual source-of-truth
+// positions live in BASE_ALE_LUDU_COLUMNS and are hand-tuned per column because
+// column pitch is NOT perfectly uniform (24.1 → 24.5 between neighbours).
+const BASE_ALE_LUDU_TUNING = {
+	col0CenterPct: 13.8,
+	colPitchPct: 24.0,
+	colWidthPct: 22.6,
+	row0CenterPct: 5.0,
+	rowHeight: 10.0,
+	rowGap: 2.4,
+	mhLeftPct: 8.05,
+	mhTopPct: 11.95,
+	mhWidthPct: 83.9,
+	mhHeightPct: 76.1,
+	tabletLeftPct: 0.0,
+	tabletTopPct: 12.0,
+	tabletWidthPct: 100.0,
+	tabletHeightPct: 100.0,
+};
+
+// Exact per-column values dialed in live so the magenta calibration grid lines up
+// with the AleLudu mod's tablet slots. Widths + row metrics are constant across
+// columns; centres are non-uniform.
+const BASE_ALE_LUDU_COLUMNS: AleLuduColumnTuning[] = [
+	{ centerPct: 13.8, widthPct: 22.6, row0CenterPct: 5.0, rowHeight: 10.0, rowGap: 2.4 },
+	{ centerPct: 38.3, widthPct: 22.5, row0CenterPct: 5.0, rowHeight: 10.0, rowGap: 2.4 },
+	{ centerPct: 62.4, widthPct: 22.6, row0CenterPct: 5.0, rowHeight: 10.0, rowGap: 2.4 },
+	{ centerPct: 86.9, widthPct: 22.6, row0CenterPct: 5.0, rowHeight: 10.0, rowGap: 2.4 },
+];
+
+function defaultColumnTuning(index: number): AleLuduColumnTuning {
+	// Clamp index into the hand-calibrated array; out-of-range should never happen
+	// since ALE_LUDU_COLUMNS === BASE_ALE_LUDU_COLUMNS.length, but guard anyway so a
+	// future ALE_LUDU_COLUMNS bump doesn't produce an undefined entry.
+	const src = BASE_ALE_LUDU_COLUMNS[index] ?? BASE_ALE_LUDU_COLUMNS[BASE_ALE_LUDU_COLUMNS.length - 1];
+	return { ...src };
+}
+
+export const DEFAULT_ALE_LUDU_TUNING: AleLuduTuning = {
+	...BASE_ALE_LUDU_TUNING,
+	showDebug: false,
+	columns: Array.from({ length: ALE_LUDU_COLUMNS }, (_, i) => defaultColumnTuning(i)),
+};
+
+function resolveColumnTuning(tuning: AleLuduTuning, column: number): AleLuduColumnTuning {
+	const existing = tuning.columns?.[column];
+	if (existing) {
+		return existing;
+	}
+	// Legacy fallback when `columns` is missing (pre-migration settings). Mirrors the
+	// historical single-set-of-knobs behavior so old saved configs keep working.
+	// Note: legacy code ignored tuning.row0CenterPct for positioning, so we default
+	// row 0 center to rowHeight/2 here to keep row 0 top pinned at 0 like before.
+	return {
+		centerPct: tuning.col0CenterPct + column * tuning.colPitchPct,
+		widthPct: tuning.colWidthPct,
+		row0CenterPct: tuning.rowHeight / 2,
+		rowHeight: tuning.rowHeight,
+		rowGap: tuning.rowGap,
+	};
+}
+
+function getAleLuduCardStyle(index: number, tuning: AleLuduTuning): CSSProperties {
+	const column = index % ALE_LUDU_COLUMNS;
+	const row = Math.floor(index / ALE_LUDU_COLUMNS);
+	const col = resolveColumnTuning(tuning, column);
+	const topCenter = col.row0CenterPct + row * (col.rowHeight + col.rowGap);
+
+	return {
+		position: 'absolute',
+		left: `${col.centerPct - col.widthPct / 2}%`,
+		top: `${topCenter - col.rowHeight / 2}%`,
+		width: `${col.widthPct}%`,
+		height: `${col.rowHeight}%`,
+	};
+}
+
+interface MeasuredRect {
+	left: number;
+	top: number;
+	width: number;
+	height: number;
+}
+
+function measureRect(element: HTMLElement | null): MeasuredRect | null {
+	if (!element) {
+		return null;
+	}
+
+	const { left, top, width, height } = element.getBoundingClientRect();
+	return {
+		left: Number(left.toFixed(1)),
+		top: Number(top.toFixed(1)),
+		width: Number(width.toFixed(1)),
+		height: Number(height.toFixed(1)),
+	};
+}
+
+function formatRect(rect: MeasuredRect | null): string {
+	if (!rect) {
+		return 'n/a';
+	}
+
+	return `${rect.left},${rect.top} ${rect.width}x${rect.height}`;
+}
+
+function truncateName(name: string, maxLength = 14): string {
+	if (name.length <= maxLength) {
+		return name;
+	}
+
+	return `${name.slice(0, maxLength - 1)}…`;
+}
 
 const EMPTY_GAME_STATE: AmongUsState = {
 	gameState: GameState.UNKNOWN,
@@ -255,6 +399,7 @@ const Overlay: React.FC = function () {
 					voiceState={voiceState}
 					playerColors={playerColors}
 					aleLuduMode={settings.aleLuduMode}
+					tuning={settings.aleLuduTuning ?? DEFAULT_ALE_LUDU_TUNING}
 				/>
 			)}
 			{settings.overlayPosition !== 'hidden' && (
@@ -485,10 +630,32 @@ interface MeetingHudProps {
 	voiceState: VoiceState;
 	playerColors: string[][];
 	aleLuduMode: boolean;
+	tuning: AleLuduTuning;
 }
 
-const MeetingHud: React.FC<MeetingHudProps> = ({ voiceState, gameState, playerColors, aleLuduMode }: MeetingHudProps) => {
+const MeetingHud: React.FC<MeetingHudProps> = ({ voiceState, gameState, playerColors, aleLuduMode, tuning }: MeetingHudProps) => {
 	const [windowWidth, windowheight] = useWindowSize();
+	const meetingHudRef = useRef<HTMLDivElement | null>(null);
+	const tabletContainerRef = useRef<HTMLDivElement | null>(null);
+	const overlayRefs = useRef<Record<number, HTMLDivElement | null>>({});
+	// Frozen player slot order captured on the first render of this MeetingHud instance.
+	// The vanilla tablet only sorts alive-first when the meeting starts — it does NOT
+	// re-shuffle slots when a player dies mid-meeting (guess / Jailor execute / etc.).
+	// Without this freeze, our overlay re-sorts on every `gameState.players` push and the
+	// coloured card boxes jump to the wrong tiles for the rest of the meeting.
+	// MeetingHud unmounts when discussion ends, so the ref is re-initialised per meeting.
+	const frozenAleLuduOrderRef = useRef<number[] | null>(null);
+	const aleLuduColumns = !gameState.oldMeetingHud && aleLuduMode ? ALE_LUDU_COLUMNS : 0;
+	const showAleLuduDebug = !gameState.oldMeetingHud && aleLuduMode && tuning.showDebug;
+	const [debugRects, setDebugRects] = useState<{
+		meetingHud: MeasuredRect | null;
+		tablet: MeasuredRect | null;
+		overlays: Record<number, MeasuredRect | null>;
+	}>({
+		meetingHud: null,
+		tablet: null,
+		overlays: {},
+	});
 	const [width, height] = useMemo(() => {
 		if (gameState.oldMeetingHud) {
 			let hudWidth = 0,
@@ -514,21 +681,68 @@ const MeetingHud: React.FC<MeetingHudProps> = ({ voiceState, gameState, playerCo
 			resultW = windowWidth / 1.591;
 		}
 
-		const resultH = resultW / 1.72;
+		const resultH = resultW / (aleLuduMode ? 1.96 : 1.72);
 
-		return [resultW, resultH];
-	}, [windowWidth, windowheight, gameState.oldMeetingHud]);
-
-	const classes = useStyles({
-		width: width,
-		height: height,
-		oldHud: gameState.oldMeetingHud,
-		aleLuduMode: !gameState.oldMeetingHud && aleLuduMode,
-	});
+	return [resultW, resultH];
+	}, [windowWidth, windowheight, gameState.oldMeetingHud, aleLuduMode]);
 
 	const players = useMemo(() => {
 		if (!gameState.players || gameState.players.length === 0) return null;
-		return gameState.players.slice().sort((a, b) => {
+		const src = gameState.players;
+
+		// AleLudu's MeetingHudBehaviour orders targets with
+		//   playerStates.OrderBy(p => p.AmDead)
+		// which is a *stable* sort run once when the meeting Start()s — alive players
+		// first in their original playerStates index order, then dead players in their
+		// original order. The Rust reader walks GameData.Instance.AllPlayers
+		// sequentially, so gameState.players[i] matches meetingHud.playerStates[i].
+		//
+		// CRITICAL: the vanilla tablet does NOT re-sort when someone dies mid-meeting
+		// (guess / Jailor execute / etc.). The dead player keeps their slot, they just
+		// get the "DEAD" overlay. If we re-sort on every render the way we used to, the
+		// card positions jump the instant isDead flips and every tile after the newly
+		// dead player renders on the wrong face. We freeze the order on first render and
+		// reuse it for the rest of the meeting (MeetingHud remounts each new meeting,
+		// clearing the ref).
+		if (aleLuduMode && !gameState.oldMeetingHud) {
+			if (frozenAleLuduOrderRef.current === null) {
+				frozenAleLuduOrderRef.current = src
+					.map((player, index) => ({ player, index }))
+					.sort((a, b) => {
+						const aDead = a.player.isDead ? 1 : 0;
+						const bDead = b.player.isDead ? 1 : 0;
+						if (aDead !== bDead) return aDead - bDead;
+						return a.index - b.index;
+					})
+					.map((entry) => entry.player.id);
+			}
+
+			const frozen = frozenAleLuduOrderRef.current;
+			const byId = new Map<number, Player>();
+			for (const player of src) {
+				byId.set(player.id, player);
+			}
+
+			const ordered: Player[] = [];
+			const seen = new Set<number>();
+			for (const id of frozen) {
+				const player = byId.get(id);
+				if (player) {
+					ordered.push(player);
+					seen.add(id);
+				}
+			}
+			// Late joiners or replacement players that weren't in the frozen snapshot
+			// get appended at the end rather than dropped (extremely rare, but safe).
+			for (const player of src) {
+				if (!seen.has(player.id)) {
+					ordered.push(player);
+				}
+			}
+			return ordered;
+		}
+
+		return src.slice().sort((a, b) => {
 			if ((a.disconnected || a.isDead) && (b.disconnected || b.isDead)) {
 				return a.id - b.id;
 			} else if (a.disconnected || a.isDead) {
@@ -538,17 +752,120 @@ const MeetingHud: React.FC<MeetingHudProps> = ({ voiceState, gameState, playerCo
 			}
 			return a.id - b.id;
 		});
-	}, [gameState.players]);
-	if (!players || gameState.gameState !== GameState.DISCUSSION) return null;
+	}, [gameState.oldMeetingHud, gameState.players, aleLuduMode]);
+	const renderPlayers = players ?? [];
+	// Stable card-slot index per player ID, captured at meeting start via frozenAleLuduOrderRef.
+	// Using this instead of `renderPlayers.map`'s array index means that if TOU removes a player
+	// from gameState.players mid-meeting (guess / Jailor execute can drop the entry entirely,
+	// not just flip isDead), the remaining players keep their original column/row positions
+	// — the dead player's slot just renders empty instead of shifting everything after it up.
+	const frozenCardIndexById: Map<number, number> = (() => {
+		const order = frozenAleLuduOrderRef.current;
+		const map = new Map<number, number>();
+		if (order) {
+			order.forEach((id, idx) => map.set(id, idx));
+		}
+		return map;
+	})();
+	const canRenderMeetingHud = gameState.gameState === GameState.DISCUSSION && renderPlayers.length > 0;
+	const aleLuduRows = aleLuduColumns > 0 ? Math.max(1, Math.ceil(renderPlayers.length / aleLuduColumns)) : 0;
+	const aleLuduContainerHeight =
+		aleLuduRows > 0
+			? `${aleLuduRows * tuning.rowHeight + Math.max(0, aleLuduRows - 1) * tuning.rowGap}%`
+			: '0%';
 
-	const overlays = players.map((player) => {
+	useEffect(() => {
+		if (!showAleLuduDebug) {
+			setDebugRects({
+				meetingHud: null,
+				tablet: null,
+				overlays: {},
+			});
+			return;
+		}
+
+		const frameId = window.requestAnimationFrame(() => {
+			const nextOverlayRects: Record<number, MeasuredRect | null> = {};
+			for (const player of renderPlayers) {
+				nextOverlayRects[player.id] = measureRect(overlayRefs.current[player.id] ?? null);
+			}
+
+			setDebugRects({
+				meetingHud: measureRect(meetingHudRef.current),
+				tablet: measureRect(tabletContainerRef.current),
+				overlays: nextOverlayRects,
+			});
+		});
+
+		return () => {
+			window.cancelAnimationFrame(frameId);
+		};
+	}, [showAleLuduDebug, renderPlayers, windowWidth, windowheight, aleLuduContainerHeight, voiceState.localTalking, voiceState.otherTalking]);
+
+	const classes = useStyles({
+		width: width,
+		height: height,
+		oldHud: gameState.oldMeetingHud,
+		aleLuduMode: !gameState.oldMeetingHud && aleLuduMode,
+		aleLuduColumns,
+		aleLuduRows,
+		aleLuduContainerHeight,
+		mhLeftPct: tuning.mhLeftPct,
+		mhTopPct: tuning.mhTopPct,
+		mhWidthPct: tuning.mhWidthPct,
+		mhHeightPct: tuning.mhHeightPct,
+		tabletLeftPct: tuning.tabletLeftPct,
+		tabletTopPct: tuning.tabletTopPct,
+		tabletWidthPct: tuning.tabletWidthPct,
+		tabletHeightPct: tuning.tabletHeightPct,
+	});
+	const debugGuides = showAleLuduDebug
+		? renderPlayers.map((player, index) => {
+				const cardIndex = frozenCardIndexById.get(player.id) ?? index;
+				const fallbackStyle = getAleLuduCardStyle(cardIndex, tuning);
+
+				return (
+					<div
+						key={`debug-${player.id}`}
+						style={{
+							...fallbackStyle,
+							position: 'absolute',
+							boxSizing: 'border-box',
+							border: '3px solid rgba(255, 0, 255, 1)',
+							background: 'rgba(255, 0, 255, 0.35)',
+							pointerEvents: 'none',
+							zIndex: 1,
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'center',
+							color: 'white',
+							fontFamily: 'monospace',
+							fontSize: 18,
+							fontWeight: 'bold',
+							textShadow: '0 0 4px #000, 0 0 4px #000',
+						}}
+					>
+						#{index} {truncateName(player.name, 10)}
+					</div>
+				);
+		  })
+		: null;
+
+	const overlays = renderPlayers.map((player, index) => {
 		const color = playerColors[player.colorId] ? playerColors[player.colorId][0] : '#C51111';
+		const cardIndex = frozenCardIndexById.get(player.id) ?? index;
+		const aleLuduCardStyle =
+			!gameState.oldMeetingHud && aleLuduMode ? getAleLuduCardStyle(cardIndex, tuning) : undefined;
 
 		return (
 			<div
 				key={player.id}
 				className={classes.playerContainer}
+				ref={(element) => {
+					overlayRefs.current[player.id] = element;
+				}}
 				style={{
+					...aleLuduCardStyle,
 					opacity: voiceState.otherTalking[player.clientId] || (player.isLocal && voiceState.localTalking) ? 1 : 0,
 					border: 'solid',
 					borderWidth: '2px',
@@ -559,11 +876,120 @@ const MeetingHud: React.FC<MeetingHudProps> = ({ voiceState, gameState, playerCo
 			/>
 		);
 	});
+	if (!canRenderMeetingHud) return null;
 
 	return (
-		<div className={classes.meetingHud}>
-			<div className={classes.tabletContainer}>{overlays}</div>
-		</div>
+		<>
+			<div
+				ref={meetingHudRef}
+				className={classes.meetingHud}
+				style={
+					showAleLuduDebug
+						? {
+								outline: '2px dashed rgba(255, 86, 86, 0.9)',
+						  }
+						: undefined
+				}
+			>
+				{showAleLuduDebug && (
+					<div
+						style={{
+							position: 'absolute',
+							top: -18,
+							left: 0,
+							padding: '1px 6px',
+							background: 'rgba(0,0,0,0.82)',
+							color: '#ff8f8f',
+							fontFamily: 'monospace',
+							fontSize: 11,
+							lineHeight: 1.2,
+							pointerEvents: 'none',
+							zIndex: 10,
+						}}
+					>
+						MEETING HUD
+					</div>
+				)}
+				<div
+					ref={tabletContainerRef}
+					className={classes.tabletContainer}
+					style={
+						showAleLuduDebug
+							? {
+									outline: '2px dashed rgba(255, 224, 102, 0.92)',
+							  }
+							: undefined
+					}
+				>
+					{showAleLuduDebug && (
+						<div
+							style={{
+								position: 'absolute',
+								top: -18,
+								left: 0,
+								padding: '1px 6px',
+								background: 'rgba(0,0,0,0.82)',
+								color: '#ffe066',
+								fontFamily: 'monospace',
+								fontSize: 11,
+								lineHeight: 1.2,
+								pointerEvents: 'none',
+								zIndex: 10,
+							}}
+						>
+							TABLET
+						</div>
+					)}
+					{debugGuides}
+					{overlays}
+				</div>
+			</div>
+			{showAleLuduDebug && (
+				<div
+					style={{
+						position: 'fixed',
+						right: 10,
+						bottom: 10,
+						width: 420,
+						maxHeight: '42vh',
+						overflow: 'auto',
+						padding: 10,
+						background: 'rgba(0, 0, 0, 0.88)',
+						color: '#f5f7fa',
+						border: '1px solid rgba(127, 252, 255, 0.35)',
+						fontFamily: 'monospace',
+						fontSize: 11,
+						lineHeight: 1.35,
+						pointerEvents: 'none',
+						zIndex: 9999,
+						whiteSpace: 'pre-wrap',
+					}}
+				>
+					<div>ALELUDU DEBUG</div>
+					<div>viewport: {windowWidth}x{windowheight}</div>
+					<div>meetingHud: {formatRect(debugRects.meetingHud)}</div>
+					<div>tablet: {formatRect(debugRects.tablet)}</div>
+					<div>players: {renderPlayers.length}</div>
+					<div>containerHeight: {aleLuduContainerHeight}</div>
+					<div>order: normal meeting overlay sort</div>
+					<div>legend: magenta=deterministic AleLudu slot</div>
+					<div style={{ marginTop: 8 }}>
+						{renderPlayers.map((player, index) => {
+							const talking = Boolean(
+								voiceState.otherTalking[player.clientId] || (player.isLocal && voiceState.localTalking)
+							);
+
+							return (
+								<div key={`debug-line-${player.id}`}>
+									{index.toString().padStart(2, '0')} {truncateName(player.name, 16)} p{player.id}/c{player.clientId}{' '}
+									dead={player.isDead ? 1 : 0} talk={talking ? 1 : 0} box={formatRect(debugRects.overlays[player.id] ?? null)}
+								</div>
+							);
+						})}
+					</div>
+				</div>
+			)}
+		</>
 	);
 };
 

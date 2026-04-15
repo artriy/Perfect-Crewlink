@@ -1,6 +1,6 @@
 [package]
 name = "perfectcrewlink"
-version = "1.0.2"
+version = "1.0.3"
 description = "Perfect Crewlink desktop client rewritten with Tauri and Rust"
 authors = ["LoMce"]
 license = "GPL-3.0-or-later"

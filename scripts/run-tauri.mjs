@@ -55,11 +55,13 @@ function buildEnv() {
 const scriptPath = fileURLToPath(import.meta.url);
 const scriptDir = path.dirname(scriptPath);
 const repoRoot = path.resolve(scriptDir, '..');
+const cargoTargetDir = path.join(repoRoot, 'src-tauri', 'target');
 const localTauriScript = path.join(repoRoot, 'node_modules', '@tauri-apps', 'cli', 'tauri.js');
 const args = process.argv.slice(2);
 const env = buildEnv();
 env.NODE = process.execPath;
 env.npm_node_execpath = process.execPath;
+env.CARGO_TARGET_DIR = cargoTargetDir;
 const child = existsSync(localTauriScript)
 	? spawn(process.execPath, [localTauriScript, ...args], {
 			env,
