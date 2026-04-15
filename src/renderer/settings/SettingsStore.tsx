@@ -1,5 +1,45 @@
 import { GamePlatform } from '../../common/GamePlatform';
-import { ILobbySettings, ISettings, SocketConfig } from '../../common/ISettings';
+import { AleLuduColumnTuning, AleLuduTuning, ILobbySettings, ISettings, SocketConfig } from '../../common/ISettings';
+
+// Number of rendered columns in the AleLudu meeting layout. Matches ALE_LUDU_COLUMNS in Overlay.tsx.
+export const ALE_LUDU_COLUMN_COUNT = 4;
+
+// Hand-calibrated per-column defaults from the live overlay session — centres are
+// non-uniform so derive-from-pitch would miss by ~1%. Must stay in sync with
+// BASE_ALE_LUDU_COLUMNS (Overlay.tsx) and DEFAULT_ALE_LUDU_COLUMN_TUNING (Settings.tsx).
+const CALIBRATED_COLUMNS: AleLuduColumnTuning[] = [
+	{ centerPct: 13.8, widthPct: 22.6, row0CenterPct: 5.0, rowHeight: 10.0, rowGap: 2.4 },
+	{ centerPct: 38.3, widthPct: 22.5, row0CenterPct: 5.0, rowHeight: 10.0, rowGap: 2.4 },
+	{ centerPct: 62.4, widthPct: 22.6, row0CenterPct: 5.0, rowHeight: 10.0, rowGap: 2.4 },
+	{ centerPct: 86.9, widthPct: 22.6, row0CenterPct: 5.0, rowHeight: 10.0, rowGap: 2.4 },
+];
+
+function buildDefaultColumns(_base: Omit<AleLuduTuning, 'columns' | 'showDebug'>): AleLuduColumnTuning[] {
+	// Return clones of the calibrated array (not the live one) so callers can mutate
+	// without poisoning other callers. `_base` is accepted for signature compatibility
+	// but intentionally unused — calibration centres beat derive-from-pitch.
+	return CALIBRATED_COLUMNS.slice(0, ALE_LUDU_COLUMN_COUNT).map((c) => ({ ...c }));
+}
+
+function normalizeColumns(
+	base: Omit<AleLuduTuning, 'columns' | 'showDebug'>,
+	existing: Partial<AleLuduColumnTuning>[] | undefined
+): AleLuduColumnTuning[] {
+	const defaults = buildDefaultColumns(base);
+	const out: AleLuduColumnTuning[] = [];
+	for (let i = 0; i < ALE_LUDU_COLUMN_COUNT; i++) {
+		const def = defaults[i];
+		const src = existing?.[i];
+		out.push({
+			centerPct: typeof src?.centerPct === 'number' ? src.centerPct : def.centerPct,
+			widthPct: typeof src?.widthPct === 'number' ? src.widthPct : def.widthPct,
+			row0CenterPct: typeof src?.row0CenterPct === 'number' ? src.row0CenterPct : def.row0CenterPct,
+			rowHeight: typeof src?.rowHeight === 'number' ? src.rowHeight : def.rowHeight,
+			rowGap: typeof src?.rowGap === 'number' ? src.rowGap : def.rowGap,
+		});
+	}
+	return out;
+}
 
 export enum pushToTalkOptions {
 	VOICE,
@@ -69,6 +109,32 @@ const defaultSettings: ISettings = {
 	obsSecret: undefined,
 	launchPlatform: GamePlatform.STEAM,
 	customPlatforms: {},
+	aleLuduTuning: ((): AleLuduTuning => {
+		const base = {
+			// Live-calibrated defaults from the in-game overlay session.
+			// Per-column centres live in CALIBRATED_COLUMNS above; these single-knob
+			// fields are the resolveColumnTuning fallback for pre-per-column configs.
+			col0CenterPct: 13.8,
+			colPitchPct: 24.0,
+			colWidthPct: 22.6,
+			row0CenterPct: 5.0,
+			rowHeight: 10.0,
+			rowGap: 2.4,
+			mhLeftPct: 8.05,
+			mhTopPct: 11.95,
+			mhWidthPct: 83.9,
+			mhHeightPct: 76.1,
+			tabletLeftPct: 0.0,
+			tabletTopPct: 12.0,
+			tabletWidthPct: 100.0,
+			tabletHeightPct: 100.0,
+		};
+		return {
+			...base,
+			showDebug: false,
+			columns: buildDefaultColumns(base),
+		};
+	})(),
 };
 
 function normalizeSettings(input: Partial<ISettings> | null | undefined): ISettings {
@@ -87,6 +153,14 @@ function normalizeSettings(input: Partial<ISettings> | null | undefined): ISetti
 			...defaultSettings.customPlatforms,
 			...(input?.customPlatforms ?? {}),
 		},
+		aleLuduTuning: (() => {
+			const merged = {
+				...defaultSettings.aleLuduTuning,
+				...(input?.aleLuduTuning ?? {}),
+			};
+			merged.columns = normalizeColumns(merged, input?.aleLuduTuning?.columns);
+			return merged;
+		})(),
 	};
 
 	if (typeof merged.serverURL === 'string' && merged.serverURL.includes('//crewl.ink')) {

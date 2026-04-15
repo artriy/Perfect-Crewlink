@@ -46,6 +46,49 @@ export interface ISettings {
 
 	launchPlatform: GamePlatform | string;
 	customPlatforms: GamePlatformMap;
+
+	aleLuduTuning: AleLuduTuning;
+}
+
+export interface AleLuduColumnTuning {
+	// Horizontal center of this column, as % of tablet width
+	centerPct: number;
+	// Width of each card in this column, as % of tablet width
+	widthPct: number;
+	// Vertical center of the first (top) card, as % of tablet height
+	row0CenterPct: number;
+	// Height of each card in this column, as % of tablet height
+	rowHeight: number;
+	// Gap between cards in this column, as % of tablet height
+	rowGap: number;
+}
+
+export interface AleLuduTuning {
+	// Legacy global tile layout — used as fallback when per-column values are missing
+	col0CenterPct: number;
+	colPitchPct: number;
+	colWidthPct: number;
+	row0CenterPct: number;
+	rowHeight: number;
+	rowGap: number;
+	showDebug: boolean;
+
+	// Per-column independent tuning (one entry per visible column).
+	// When present, each column's card positions and sizes are driven by its own entry
+	// instead of the legacy col0CenterPct/colPitchPct/colWidthPct/... fields.
+	columns: AleLuduColumnTuning[];
+
+	// Meeting HUD rect — absolute % of viewport
+	mhLeftPct: number;
+	mhTopPct: number;
+	mhWidthPct: number;
+	mhHeightPct: number;
+
+	// Tablet container rect — % of meetingHud
+	tabletLeftPct: number;
+	tabletTopPct: number;
+	tabletWidthPct: number;
+	tabletHeightPct: number;
 }
 
 export interface ILobbySettings {
