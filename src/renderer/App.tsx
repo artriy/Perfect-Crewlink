@@ -141,7 +141,7 @@ const RawTitleBar: React.FC<TitleBarProps> = function ({ appVersion, settingsOpe
 				title="Public lobbies"
 				onClick={() => bridge.send(IpcHandlerMessages.OPEN_LOBBYBROWSER)}
 			>
-				<PublicIcon htmlColor="#777" fontSize="small" />
+				<PublicIcon htmlColor="#777" />
 			</IconButton>
 			<IconButton className={classes.button} style={{ right: 0 }} size="small" onClick={() => bridge.send('QUIT_CREWLINK')}>
 				<CloseIcon htmlColor="#777" />
