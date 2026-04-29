@@ -37,6 +37,7 @@ check('connect_refreshes_same_lobby_ids', /currentLobby === lobbyCode/.test(voic
 check('connect_effect_tracks_player_identity', /myPlayer\?\.id/.test(voice.match(/\}, \[connect\?\.connect[\s\S]*?\]\);/)?.[0] ?? '') && /gameState\.clientId/.test(voice.match(/\}, \[connect\?\.connect[\s\S]*?\]\);/)?.[0] ?? ''));
 check('other_dead_tracks_player_updates', /\[gameState\.gameState, gameState\.players\]/.test(voice) && /let changed = false/.test(voice));
 check('camera_audio_handles_missing_camera', /const cameras = AmongUsMaps\[state\.map\]\?\.cameras \?\? \{\}/.test(voice) && /if \(!camerapos\)/.test(voice));
+check('talking_highlight_uses_recent_audio_guard', /REMOTE_AUDIO_TALKING_GRACE_MS/.test(voice) && /serverVadTalking/.test(voice));
 
 console.log(`METRIC static_bug_checks=${bugScore}`);
 NODE
@@ -102,6 +103,7 @@ const checks = [
   /myPlayer\?\.id/.test(voice.match(/\}, \[connect\?\.connect[\s\S]*?\]\);/)?.[0] ?? '') && /gameState\.clientId/.test(voice.match(/\}, \[connect\?\.connect[\s\S]*?\]\);/)?.[0] ?? ''),
   /\[gameState\.gameState, gameState\.players\]/.test(voice) && /let changed = false/.test(voice),
   /const cameras = AmongUsMaps\[state\.map\]\?\.cameras \?\? \{\}/.test(voice) && /if \(!camerapos\)/.test(voice),
+  /REMOTE_AUDIO_TALKING_GRACE_MS/.test(voice) && /serverVadTalking/.test(voice),
 ];
 console.log(checks.filter((ok) => !ok).length);
 NODE
