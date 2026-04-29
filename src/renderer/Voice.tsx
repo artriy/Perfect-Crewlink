@@ -1153,13 +1153,30 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 		} else if (gameState.gameState !== GameState.TASKS) {
 			if (!gameState.players) return;
 			setOtherDead((old) => {
+				let changed = false;
+				const next = { ...old };
+				const liveClientIds = new Set<number>();
+
 				for (const player of gameState.players) {
-					old[player.clientId] = player.isDead || player.disconnected;
+					liveClientIds.add(player.clientId);
+					const isDead = player.isDead || player.disconnected;
+					if (next[player.clientId] !== isDead) {
+						next[player.clientId] = isDead;
+						changed = true;
+					}
 				}
-				return { ...old };
+
+				for (const key of Object.keys(next)) {
+					if (!liveClientIds.has(Number(key))) {
+						delete next[Number(key)];
+						changed = true;
+					}
+				}
+
+				return changed ? next : old;
 			});
 		}
-	}, [gameState.gameState]);
+	}, [gameState.gameState, gameState.players]);
 
 	// const [audioContext] = useState<AudioContext>(() => new AudioContext());
 	const connectionStuff = useRef<ConnectionStuff>({
