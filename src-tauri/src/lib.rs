@@ -370,18 +370,21 @@ fn set_overlay_child_styles(window: &WebviewWindow, parent_hwnd: Option<windows:
 
     let overlay_hwnd = window.hwnd().map_err(|error| error.to_string())?;
     unsafe {
-        SetParent(overlay_hwnd, parent_hwnd).map_err(|error| error.to_string())?;
         let style = GetWindowLongPtrW(overlay_hwnd, GWL_STYLE);
-        let mut next_style = style;
-        if parent_hwnd.is_some() {
+        if let Some(parent_hwnd) = parent_hwnd {
+            let mut next_style = style;
             next_style |= WS_VISIBLE.0 as isize;
             next_style |= WS_CHILD.0 as isize;
             next_style &= !(WS_POPUP.0 as isize);
+            SetWindowLongPtrW(overlay_hwnd, GWL_STYLE, next_style);
+            SetParent(overlay_hwnd, Some(parent_hwnd)).map_err(|error| error.to_string())?;
         } else {
+            SetParent(overlay_hwnd, None).map_err(|error| error.to_string())?;
+            let mut next_style = style;
             next_style |= WS_POPUP.0 as isize;
             next_style &= !(WS_CHILD.0 as isize | WS_VISIBLE.0 as isize);
+            SetWindowLongPtrW(overlay_hwnd, GWL_STYLE, next_style);
         }
-        SetWindowLongPtrW(overlay_hwnd, GWL_STYLE, next_style);
 
         if let Some(size) = size {
             SetWindowPos(
