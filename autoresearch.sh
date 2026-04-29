@@ -35,6 +35,7 @@ check('stale_vad_cannot_overwrite_socket_mapping', /isStaleClientSocketUpdate/.t
 check('duplicate_client_socket_map_is_deduped', /preferSocketForClient/.test(voice) && /nextSocketIds\[client\.clientId\] !== socketId/.test(voice));
 check('connect_refreshes_same_lobby_ids', /currentLobby === lobbyCode/.test(voice) && /socket\.emit\('id', playerId, clientId\)/.test(voice));
 check('connect_effect_tracks_player_identity', /myPlayer\?\.id/.test(voice.match(/\}, \[connect\?\.connect[\s\S]*?\]\);/)?.[0] ?? '') && /gameState\.clientId/.test(voice.match(/\}, \[connect\?\.connect[\s\S]*?\]\);/)?.[0] ?? ''));
+check('other_dead_tracks_player_updates', /\[gameState\.gameState, gameState\.players\]/.test(voice) && /let changed = false/.test(voice));
 
 console.log(`METRIC static_bug_checks=${bugScore}`);
 NODE
@@ -84,6 +85,7 @@ const checks = [
   /preferSocketForClient/.test(voice) && /nextSocketIds\[client\.clientId\] !== socketId/.test(voice),
   /currentLobby === lobbyCode/.test(voice) && /socket\.emit\('id', playerId, clientId\)/.test(voice),
   /myPlayer\?\.id/.test(voice.match(/\}, \[connect\?\.connect[\s\S]*?\]\);/)?.[0] ?? '') && /gameState\.clientId/.test(voice.match(/\}, \[connect\?\.connect[\s\S]*?\]\);/)?.[0] ?? ''),
+  /\[gameState\.gameState, gameState\.players\]/.test(voice) && /let changed = false/.test(voice),
 ];
 console.log(checks.filter((ok) => !ok).length);
 NODE

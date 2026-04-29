@@ -46,3 +46,10 @@ Fix requested runtime bugs without benchmark cheating:
   - `Voice.tsx` has one reconnect path passing `myPlayer.clientId` as server `playerId`.
   - `Voice.tsx` writes game Y to WebAudio vertical Y axis and fixed Z; top-down 2D audio should keep vertical Y at 0 and use Z for game Y.
   - `Voice.tsx` lets stale VAD socket IDs overwrite active client/socket mapping.
+- Kept fixes so far:
+  - Overlay now stays visible when Among Us loses foreground focus, hiding only when game window is minimized/missing.
+  - Meeting overlay uses one frozen slot order for every HUD and lets the frozen order grow while initial roster data arrives.
+  - Voice spatialization maps top-down game coordinates to WebAudio X/Z axes and keeps vertical Y fixed at 0.
+  - Voice peer mapping ignores stale VAD socket updates, dedupes duplicate sockets per client, and refreshes server identity when player id becomes available.
+  - `debugMode` was added to `ISettings`, making `npm run typecheck` pass.
+  - `autoresearch.sh` now validates static root-cause checks, TypeScript typecheck, and Rust `cargo check`.
