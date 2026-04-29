@@ -80,9 +80,7 @@ function useWindowSize() {
 			setWindowSize([window.innerWidth, window.innerHeight]);
 		};
 		const onVisibilityChange = () => {
-			if (document.visibilityState === 'visible') {
-				onResize();
-			}
+			onResize();
 		};
 
 		window.addEventListener('resize', onResize);
@@ -297,10 +295,8 @@ const Overlay: React.FC = function () {
 		const requestInitValues = () => {
 			bridge.send(IpcMessages.SEND_TO_MAINWINDOW, IpcOverlayMessages.REQUEST_INITVALUES);
 		};
-		const requestInitValuesIfVisible = () => {
-			if (document.visibilityState === 'visible') {
-				requestInitValues();
-			}
+		const requestInitValuesOnVisibilityChange = () => {
+			requestInitValues();
 		};
 
 		const onState = (_: unknown, newState: AmongUsState) => {
@@ -360,7 +356,7 @@ const Overlay: React.FC = function () {
 		bridge.on(IpcOverlayMessages.NOTIFY_PLAYERCOLORS_CHANGED, onColorChange);
 		window.addEventListener('storage', onStorage);
 		window.addEventListener('focus', requestInitValues);
-		document.addEventListener('visibilitychange', requestInitValuesIfVisible);
+		document.addEventListener('visibilitychange', requestInitValuesOnVisibilityChange);
 		requestInitValues();
 		const initInterval = window.setInterval(() => {
 			initRequests += 1;
@@ -374,7 +370,7 @@ const Overlay: React.FC = function () {
 			window.clearInterval(initInterval);
 			window.removeEventListener('storage', onStorage);
 			window.removeEventListener('focus', requestInitValues);
-			document.removeEventListener('visibilitychange', requestInitValuesIfVisible);
+			document.removeEventListener('visibilitychange', requestInitValuesOnVisibilityChange);
 			bridge.off(IpcOverlayMessages.NOTIFY_GAME_STATE_CHANGED, onState);
 			bridge.off(IpcOverlayMessages.NOTIFY_VOICE_STATE_CHANGED, onVoiceState);
 			bridge.off(IpcOverlayMessages.NOTIFY_SETTINGS_CHANGED, onSettings);
