@@ -39,6 +39,7 @@ check('other_dead_tracks_player_updates', /\[gameState\.gameState, gameState\.pl
 check('camera_audio_handles_missing_camera', /const cameras = AmongUsMaps\[state\.map\]\?\.cameras \?\? \{\}/.test(voice) && /if \(!camerapos\)/.test(voice));
 check('talking_highlight_uses_recent_audio_guard', /REMOTE_AUDIO_TALKING_GRACE_MS/.test(voice) && /serverVadTalking/.test(voice));
 check('overlay_visibilitychange_refreshes_when_hidden', !/document\.visibilityState === 'visible'/.test(overlay));
+check('meeting_roster_growth_appends_without_reshuffle', /appendMissingMeetingPlayers/.test(overlay));
 
 console.log(`METRIC static_bug_checks=${bugScore}`);
 NODE
@@ -106,6 +107,7 @@ const checks = [
   /const cameras = AmongUsMaps\[state\.map\]\?\.cameras \?\? \{\}/.test(voice) && /if \(!camerapos\)/.test(voice),
   /REMOTE_AUDIO_TALKING_GRACE_MS/.test(voice) && /serverVadTalking/.test(voice),
   !/document\.visibilityState === 'visible'/.test(overlay),
+  /appendMissingMeetingPlayers/.test(overlay),
 ];
 console.log(checks.filter((ok) => !ok).length);
 NODE
