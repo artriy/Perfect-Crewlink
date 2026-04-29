@@ -152,6 +152,7 @@ const REMOTE_AUDIO_AUDIBLE_ON = 0.02;
 const REMOTE_AUDIO_AUDIBLE_OFF = 0.012;
 const REMOTE_AUDIO_SPEAKING_ON = 0.045;
 const REMOTE_AUDIO_SPEAKING_OFF = 0.024;
+const REMOTE_AUDIO_TALKING_GRACE_MS = 750;
 
 export interface VoiceProps {
 	t: (key: string) => string;
@@ -1730,7 +1731,13 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 			const peerId = clientConnections[player.clientId]?.socketId ?? clientSocketIdsRef.current[player.clientId];
 			const audio = player.clientId === myPlayer.clientId ? undefined : audioElements.current[peerId];
 			const remoteAudioState = clientAudioActivity[player.clientId];
-			const localPeerTalking = Boolean(remoteAudioState?.speaking || remoteAudioState?.audible);
+			const remoteAudioRecent = Boolean(
+				remoteAudioState?.lastActivityAt && Date.now() - remoteAudioState.lastActivityAt <= REMOTE_AUDIO_TALKING_GRACE_MS
+			);
+			const localPeerTalking = Boolean(remoteAudioState?.speaking || (remoteAudioState?.audible && remoteAudioRecent));
+			const serverVadTalking = Boolean(
+				otherVAD[player.clientId] && (!remoteAudioState || remoteAudioRecent || remoteAudioState.speaking || remoteAudioState.audible)
+			);
 			if (
 				player.clientId === impostorRadioClientId.current &&
 				player.isImpostor &&
@@ -1757,8 +1764,7 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 					gain = gain * (settings.masterVolume / 100);
 				}
 				audio.gain.gain.value = gain;
-				tempTalking[player.clientId] =
-					gain > 0 && Boolean(otherVAD[player.clientId] || remoteAudioState?.speaking || localPeerTalking);
+				tempTalking[player.clientId] = gain > 0 && Boolean(serverVadTalking || localPeerTalking);
 				if (tempTalking[player.clientId] != otherTalking[player.clientId]) {
 					talkingUpdate = true;
 				}
