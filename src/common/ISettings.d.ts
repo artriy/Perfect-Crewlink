@@ -37,6 +37,7 @@ export interface ISettings {
 	echoCancellation: boolean;
 	noiseSuppression: boolean;
 	oldSampleDebug: boolean;
+	debugMode: boolean;
 
 	enableSpatialAudio: boolean;
 	oldSampleDebug: boolean;

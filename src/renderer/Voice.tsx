@@ -375,6 +375,11 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 		});
 	};
 
+	const isStaleClientSocketUpdate = (clientId: number, socketId: string) => {
+		const activeSocketId = clientSocketIdsRef.current[clientId] ?? clientConnectionsRef.current[clientId]?.socketId;
+		return Boolean(activeSocketId && activeSocketId !== socketId);
+	};
+
 	const setClientConnectionMap = (nextClients: SocketClientMap) => {
 		socketClientsRef.current = nextClients;
 		setSocketClients(nextClients);
@@ -460,6 +465,14 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 			console.log('error with applying effect: ', player.name, effectNode);
 		}
 	}
+
+	function setTopDownPanPosition(pan: PannerNode, panPos: number[]) {
+		const audioContext = pan.context;
+		pan.positionX.setValueAtTime(panPos[0], audioContext.currentTime);
+		pan.positionY.setValueAtTime(0, audioContext.currentTime);
+		pan.positionZ.setValueAtTime(-panPos[1], audioContext.currentTime);
+	}
+
 	function calculateVoiceAudio(
 		state: AmongUsState,
 		settings: ISettings,
@@ -468,7 +481,6 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 		audio: AudioNodes
 	): number {
 		const { pan, gain, muffle, reverb, destination } = audio;
-		const audioContext = pan.context;
 		const useLightSource = true;
 		let maxdistance = maxDistanceRef.current;
 		let panPos = [other.x - me.x, other.y - me.y];
@@ -633,9 +645,7 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 			panPos = [0, 0];
 		}
 
-		pan.positionX.setValueAtTime(panPos[0], audioContext.currentTime);
-		pan.positionY.setValueAtTime(panPos[1], audioContext.currentTime);
-		pan.positionZ.setValueAtTime(-0.5, audioContext.currentTime);
+		setTopDownPanPosition(pan, panPos);
 		return endGain;
 	}
 
@@ -1243,6 +1253,10 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 		});
 
 		socket.on('VAD', (data: { activity: boolean; client: Client; socketId: string }) => {
+			if (isStaleClientSocketUpdate(data.client.clientId, data.socketId)) {
+				return;
+			}
+
 			setOtherVAD((old) => ({
 				...old,
 				[data.client.clientId]: data.activity,
@@ -1750,7 +1764,7 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 			(gameState.oldGameState === GameState.DISCUSSION || gameState.oldGameState === GameState.TASKS)
 		) {
 			hostRef.current.mobileRunning = false;
-			connect.connect(gameState.lobbyCode, myPlayer.clientId, gameState.clientId, resolvedIsHost);
+			connect.connect(gameState.lobbyCode, myPlayer.id, gameState.clientId, resolvedIsHost);
 		} else if (
 			gameState.oldGameState !== GameState.UNKNOWN &&
 			gameState.oldGameState !== GameState.MENU &&

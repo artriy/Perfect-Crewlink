@@ -644,7 +644,7 @@ const MeetingHud: React.FC<MeetingHudProps> = ({ voiceState, gameState, playerCo
 	// Without this freeze, our overlay re-sorts on every `gameState.players` push and the
 	// coloured card boxes jump to the wrong tiles for the rest of the meeting.
 	// MeetingHud unmounts when discussion ends, so the ref is re-initialised per meeting.
-	const frozenAleLuduOrderRef = useRef<number[] | null>(null);
+	const frozenMeetingOrderRef = useRef<number[] | null>(null);
 	const aleLuduColumns = !gameState.oldMeetingHud && aleLuduMode ? ALE_LUDU_COLUMNS : 0;
 	const showAleLuduDebug = !gameState.oldMeetingHud && aleLuduMode && tuning.showDebug;
 	const [debugRects, setDebugRects] = useState<{
@@ -704,9 +704,9 @@ const MeetingHud: React.FC<MeetingHudProps> = ({ voiceState, gameState, playerCo
 		// dead player renders on the wrong face. We freeze the order on first render and
 		// reuse it for the rest of the meeting (MeetingHud remounts each new meeting,
 		// clearing the ref).
-		if (aleLuduMode && !gameState.oldMeetingHud) {
-			if (frozenAleLuduOrderRef.current === null) {
-				frozenAleLuduOrderRef.current = src
+		if (gameState.gameState === GameState.DISCUSSION) {
+			if (frozenMeetingOrderRef.current === null) {
+				frozenMeetingOrderRef.current = src
 					.map((player, index) => ({ player, index }))
 					.sort((a, b) => {
 						const aDead = a.player.isDead ? 1 : 0;
@@ -717,7 +717,7 @@ const MeetingHud: React.FC<MeetingHudProps> = ({ voiceState, gameState, playerCo
 					.map((entry) => entry.player.id);
 			}
 
-			const frozen = frozenAleLuduOrderRef.current;
+			const frozen = frozenMeetingOrderRef.current;
 			const byId = new Map<number, Player>();
 			for (const player of src) {
 				byId.set(player.id, player);
@@ -752,15 +752,15 @@ const MeetingHud: React.FC<MeetingHudProps> = ({ voiceState, gameState, playerCo
 			}
 			return a.id - b.id;
 		});
-	}, [gameState.oldMeetingHud, gameState.players, aleLuduMode]);
+	}, [gameState.gameState, gameState.players]);
 	const renderPlayers = players ?? [];
-	// Stable card-slot index per player ID, captured at meeting start via frozenAleLuduOrderRef.
+	// Stable card-slot index per player ID, captured at meeting start via frozenMeetingOrderRef.
 	// Using this instead of `renderPlayers.map`'s array index means that if TOU removes a player
 	// from gameState.players mid-meeting (guess / Jailor execute can drop the entry entirely,
 	// not just flip isDead), the remaining players keep their original column/row positions
 	// — the dead player's slot just renders empty instead of shifting everything after it up.
 	const frozenCardIndexById: Map<number, number> = (() => {
-		const order = frozenAleLuduOrderRef.current;
+		const order = frozenMeetingOrderRef.current;
 		const map = new Map<number, number>();
 		if (order) {
 			order.forEach((id, idx) => map.set(id, idx));
@@ -768,7 +768,8 @@ const MeetingHud: React.FC<MeetingHudProps> = ({ voiceState, gameState, playerCo
 		return map;
 	})();
 	const canRenderMeetingHud = gameState.gameState === GameState.DISCUSSION && renderPlayers.length > 0;
-	const aleLuduRows = aleLuduColumns > 0 ? Math.max(1, Math.ceil(renderPlayers.length / aleLuduColumns)) : 0;
+	const aleLuduSlotCount = frozenMeetingOrderRef.current?.length ?? renderPlayers.length;
+	const aleLuduRows = aleLuduColumns > 0 ? Math.max(1, Math.ceil(aleLuduSlotCount / aleLuduColumns)) : 0;
 	const aleLuduContainerHeight =
 		aleLuduRows > 0
 			? `${aleLuduRows * tuning.rowHeight + Math.max(0, aleLuduRows - 1) * tuning.rowGap}%`

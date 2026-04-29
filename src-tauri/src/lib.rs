@@ -384,7 +384,7 @@ fn refresh_overlay_window(app: &AppHandle, enabled: bool) -> Result<(), String> 
             return window.hide().map_err(|error| error.to_string());
         };
 
-        if state.is_minimized || !state.is_foreground {
+        if state.is_minimized {
             return window.hide().map_err(|error| error.to_string());
         }
 
