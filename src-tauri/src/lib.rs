@@ -364,7 +364,7 @@ fn find_among_us_window_state() -> Option<AmongUsWindowState> {
 #[cfg(windows)]
 fn set_overlay_child_styles(window: &WebviewWindow, parent_hwnd: Option<windows::Win32::Foundation::HWND>, size: Option<PhysicalSize<u32>>) -> Result<(), String> {
     use windows::Win32::UI::WindowsAndMessaging::{
-        GetWindowLongPtrW, SetParent, SetWindowLongPtrW, SetWindowPos, GWL_STYLE,
+        GetParent, GetWindowLongPtrW, SetParent, SetWindowLongPtrW, SetWindowPos, GWL_STYLE,
         HWND_TOP, SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER,
         WS_CHILD, WS_POPUP, WS_VISIBLE,
     };
@@ -372,15 +372,20 @@ fn set_overlay_child_styles(window: &WebviewWindow, parent_hwnd: Option<windows:
     let overlay_hwnd = window.hwnd().map_err(|error| error.to_string())?;
     unsafe {
         let style = GetWindowLongPtrW(overlay_hwnd, GWL_STYLE);
+        let current_parent = GetParent(overlay_hwnd).ok();
         if let Some(parent_hwnd) = parent_hwnd {
             let mut next_style = style;
             next_style |= WS_VISIBLE.0 as isize;
             next_style |= WS_CHILD.0 as isize;
             next_style &= !(WS_POPUP.0 as isize);
             SetWindowLongPtrW(overlay_hwnd, GWL_STYLE, next_style);
-            SetParent(overlay_hwnd, Some(parent_hwnd)).map_err(|error| error.to_string())?;
+            if current_parent != Some(parent_hwnd) {
+                SetParent(overlay_hwnd, Some(parent_hwnd)).map_err(|error| error.to_string())?;
+            }
         } else {
-            SetParent(overlay_hwnd, None).map_err(|error| error.to_string())?;
+            if current_parent.is_some() {
+                SetParent(overlay_hwnd, None).map_err(|error| error.to_string())?;
+            }
             let mut next_style = style;
             next_style |= WS_POPUP.0 as isize;
             next_style &= !(WS_CHILD.0 as isize | WS_VISIBLE.0 as isize);
