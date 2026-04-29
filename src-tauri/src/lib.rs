@@ -269,7 +269,7 @@ fn configure_overlay_window(window: &WebviewWindow) -> Result<(), String> {
     window
         .set_ignore_cursor_events(true)
         .map_err(|error| error.to_string())?;
-    window.set_always_on_top(true).map_err(|error| error.to_string())
+    window.set_always_on_top(false).map_err(|error| error.to_string())
 }
 
 #[cfg(not(windows))]
