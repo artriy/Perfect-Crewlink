@@ -51,5 +51,8 @@ Fix requested runtime bugs without benchmark cheating:
   - Meeting overlay uses one frozen slot order for every HUD and lets the frozen order grow while initial roster data arrives.
   - Voice spatialization maps top-down game coordinates to WebAudio X/Z axes and keeps vertical Y fixed at 0.
   - Voice peer mapping ignores stale VAD socket updates, dedupes duplicate sockets per client, and refreshes server identity when player id becomes available.
+  - Voice dead-state metadata now tracks live player updates, not only game-state transitions.
+  - Camera-based proximity audio now safely handles maps/mods with missing camera metadata.
+  - Talking highlights now require recent remote audio activity when using server VAD, reducing stale/wrong highlights.
   - `debugMode` was added to `ISettings`, making `npm run typecheck` pass.
-  - `autoresearch.sh` now validates static root-cause checks, TypeScript typecheck, and Rust `cargo check`.
+  - `autoresearch.sh` now validates static root-cause checks, TypeScript typecheck, production Vite build, and Rust `cargo check`.
