@@ -1736,7 +1736,7 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 			);
 			const localPeerTalking = Boolean(remoteAudioState?.speaking || (remoteAudioState?.audible && remoteAudioRecent));
 			const serverVadTalking = Boolean(
-				otherVAD[player.clientId] && (!remoteAudioState || remoteAudioRecent || remoteAudioState.speaking || remoteAudioState.audible)
+				otherVAD[player.clientId] && remoteAudioState && (remoteAudioRecent || remoteAudioState.speaking || remoteAudioState.audible)
 			);
 			if (
 				player.clientId === impostorRadioClientId.current &&
@@ -1768,6 +1768,9 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 				if (tempTalking[player.clientId] != otherTalking[player.clientId]) {
 					talkingUpdate = true;
 				}
+			} else if (tempTalking[player.clientId]) {
+				tempTalking[player.clientId] = false;
+				talkingUpdate = true;
 			}
 		}
 		if (talkingUpdate) {
