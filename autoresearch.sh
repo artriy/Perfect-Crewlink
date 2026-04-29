@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "$0")" && pwd)"
+cd "$repo_root"
+
+node <<'NODE'
+const fs = require('fs');
+
+function read(path) {
+  return fs.readFileSync(path, 'utf8');
+}
+
+const lib = read('src-tauri/src/lib.rs');
+const overlay = read('src/renderer/Overlay.tsx');
+const voice = read('src/renderer/Voice.tsx');
+
+let bugScore = 0;
+function check(name, ok) {
+  if (!ok) {
+    bugScore += 1;
+    console.log(`CHECK_FAIL ${name}`);
+  } else {
+    console.log(`CHECK_PASS ${name}`);
+  }
+}
+
+check('overlay_visible_when_among_us_not_foreground', !/!\s*state\.is_foreground/.test(lib));
+check('meeting_order_frozen_for_all_huds', /frozenMeetingOrderRef/.test(overlay));
+check('meeting_slot_count_uses_frozen_slots', /aleLuduSlotCount/.test(overlay));
+check('rejoin_uses_player_id_not_client_id', !/connect\.connect\(gameState\.lobbyCode,\s*myPlayer\.clientId/.test(voice));
+check('spatial_audio_uses_top_down_axes', /setTopDownPanPosition/.test(voice) && !/pan\.positionY\.setValueAtTime\(panPos\[1\]/.test(voice));
+check('stale_vad_cannot_overwrite_socket_mapping', /isStaleClientSocketUpdate/.test(voice));
+
+console.log(`METRIC static_bug_checks=${bugScore}`);
+NODE
+
+typecheck_log="${TMPDIR:-.}/perfectcrewlink-typecheck.log"
+set +e
+npm run typecheck --silent >"$typecheck_log" 2>&1
+typecheck_status=$?
+set -e
+if [[ "$typecheck_status" -ne 0 ]]; then
+	echo "TYPECHECK_FAIL"
+	node -e "const fs = require('fs'); const p = process.argv[1]; const text = fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : ''; console.log(text.split(/\\r?\\n/).slice(-80).join('\\n'));" "$typecheck_log"
+	typecheck_fail=1
+else
+	echo "TYPECHECK_PASS"
+	typecheck_fail=0
+fi
+
+static_bug_checks=$(
+	node <<'NODE'
+const fs = require('fs');
+const lib = fs.readFileSync('src-tauri/src/lib.rs', 'utf8');
+const overlay = fs.readFileSync('src/renderer/Overlay.tsx', 'utf8');
+const voice = fs.readFileSync('src/renderer/Voice.tsx', 'utf8');
+const checks = [
+  !/!\s*state\.is_foreground/.test(lib),
+  /frozenMeetingOrderRef/.test(overlay),
+  /aleLuduSlotCount/.test(overlay),
+  !/connect\.connect\(gameState\.lobbyCode,\s*myPlayer\.clientId/.test(voice),
+  /setTopDownPanPosition/.test(voice) && !/pan\.positionY\.setValueAtTime\(panPos\[1\]/.test(voice),
+  /isStaleClientSocketUpdate/.test(voice),
+];
+console.log(checks.filter((ok) => !ok).length);
+NODE
+)
+
+bug_score=$((static_bug_checks + typecheck_fail * 10))
+echo "METRIC typecheck_fail=$typecheck_fail"
+echo "METRIC bug_score=$bug_score"
