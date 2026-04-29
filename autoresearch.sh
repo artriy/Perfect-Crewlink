@@ -64,6 +64,13 @@ check('meeting_same_length_replacements_append', /hasMissingMeetingPlayers/.test
 check('meeting_missing_players_render_placeholders', /meetingPlaceholder/.test(overlay) && /player: Player \| null/.test(overlay));
 check('talking_vad_requires_audio_state', !/!remoteAudioState/.test(voice.match(/const serverVadTalking[\s\S]*?\);/)?.[0] ?? ''));
 check('talking_clears_when_audio_missing', /else if \(tempTalking\[player\.clientId\]\)/.test(voice));
+const disconnectPeerStart = voice.indexOf('function disconnectPeer');
+const disconnectPeerEnd = disconnectPeerStart >= 0 ? voice.indexOf('// Handle pushToTalk', disconnectPeerStart) : -1;
+const disconnectPeerBody = disconnectPeerStart >= 0 && disconnectPeerEnd > disconnectPeerStart ? voice.slice(disconnectPeerStart, disconnectPeerEnd) : '';
+const noConnectionStart = disconnectPeerBody.indexOf('if (!connection)');
+const noConnectionReturn = noConnectionStart >= 0 ? disconnectPeerBody.indexOf('return;', noConnectionStart) : -1;
+const noConnectionBranch = noConnectionStart >= 0 && noConnectionReturn > noConnectionStart ? disconnectPeerBody.slice(noConnectionStart, noConnectionReturn) : '';
+check('disconnect_peer_cleans_audio_without_connection', /disconnectAudioElement\(peer\)/.test(noConnectionBranch));
 
 console.log(`METRIC static_bug_checks=${bugScore}`);
 NODE
@@ -170,6 +177,15 @@ const checks = [
   /meetingPlaceholder/.test(overlay) && /player: Player \| null/.test(overlay),
   !/!remoteAudioState/.test(voice.match(/const serverVadTalking[\s\S]*?\);/)?.[0] ?? ''),
   /else if \(tempTalking\[player\.clientId\]\)/.test(voice),
+  (() => {
+    const disconnectPeerStart = voice.indexOf('function disconnectPeer');
+    const disconnectPeerEnd = disconnectPeerStart >= 0 ? voice.indexOf('// Handle pushToTalk', disconnectPeerStart) : -1;
+    const disconnectPeerBody = disconnectPeerStart >= 0 && disconnectPeerEnd > disconnectPeerStart ? voice.slice(disconnectPeerStart, disconnectPeerEnd) : '';
+    const noConnectionStart = disconnectPeerBody.indexOf('if (!connection)');
+    const noConnectionReturn = noConnectionStart >= 0 ? disconnectPeerBody.indexOf('return;', noConnectionStart) : -1;
+    const noConnectionBranch = noConnectionStart >= 0 && noConnectionReturn > noConnectionStart ? disconnectPeerBody.slice(noConnectionStart, noConnectionReturn) : '';
+    return /disconnectAudioElement\(peer\)/.test(noConnectionBranch);
+  })(),
 ];
 console.log(checks.filter((ok) => !ok).length);
 NODE
