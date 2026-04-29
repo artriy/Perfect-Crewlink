@@ -380,6 +380,28 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 		return Boolean(activeSocketId && activeSocketId !== socketId);
 	};
 
+	const preferSocketForClient = (clientId: number, candidateSocketId: string, currentSocketId?: string) => {
+		if (!currentSocketId) {
+			return true;
+		}
+
+		const candidateActive = Boolean(audioElements.current[candidateSocketId] || peerConnectionsRef.current[candidateSocketId]);
+		const currentActive = Boolean(audioElements.current[currentSocketId] || peerConnectionsRef.current[currentSocketId]);
+		if (candidateActive !== currentActive) {
+			return candidateActive;
+		}
+
+		const previousSocketId = clientConnectionsRef.current[clientId]?.socketId;
+		if (candidateSocketId === previousSocketId) {
+			return true;
+		}
+		if (currentSocketId === previousSocketId) {
+			return false;
+		}
+
+		return false;
+	};
+
 	const setClientConnectionMap = (nextClients: SocketClientMap) => {
 		socketClientsRef.current = nextClients;
 		setSocketClients(nextClients);
@@ -389,7 +411,9 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 		const now = Date.now();
 
 		for (const [socketId, client] of Object.entries(nextClients)) {
-			nextSocketIds[client.clientId] = socketId;
+			if (preferSocketForClient(client.clientId, socketId, nextSocketIds[client.clientId])) {
+				nextSocketIds[client.clientId] = socketId;
+			}
 			seenClientIds.add(client.clientId);
 		}
 
@@ -398,6 +422,10 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 			const next: ClientConnectionMap = { ...old };
 
 			for (const [socketId, client] of Object.entries(nextClients)) {
+				if (nextSocketIds[client.clientId] !== socketId) {
+					continue;
+				}
+
 				const previous = next[client.clientId];
 				next[client.clientId] = {
 					clientId: client.clientId,
