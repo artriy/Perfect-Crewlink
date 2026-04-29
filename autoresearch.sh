@@ -33,6 +33,8 @@ check('rejoin_uses_player_id_not_client_id', !/connect\.connect\(gameState\.lobb
 check('spatial_audio_uses_top_down_axes', /setTopDownPanPosition/.test(voice) && !/pan\.positionY\.setValueAtTime\(panPos\[1\]/.test(voice));
 check('stale_vad_cannot_overwrite_socket_mapping', /isStaleClientSocketUpdate/.test(voice));
 check('duplicate_client_socket_map_is_deduped', /preferSocketForClient/.test(voice) && /nextSocketIds\[client\.clientId\] !== socketId/.test(voice));
+check('connect_refreshes_same_lobby_ids', /currentLobby === lobbyCode/.test(voice) && /socket\.emit\('id', playerId, clientId\)/.test(voice));
+check('connect_effect_tracks_player_identity', /myPlayer\?\.id/.test(voice.match(/\}, \[connect\?\.connect[\s\S]*?\]\);/)?.[0] ?? '') && /gameState\.clientId/.test(voice.match(/\}, \[connect\?\.connect[\s\S]*?\]\);/)?.[0] ?? ''));
 
 console.log(`METRIC static_bug_checks=${bugScore}`);
 NODE
@@ -80,6 +82,8 @@ const checks = [
   /setTopDownPanPosition/.test(voice) && !/pan\.positionY\.setValueAtTime\(panPos\[1\]/.test(voice),
   /isStaleClientSocketUpdate/.test(voice),
   /preferSocketForClient/.test(voice) && /nextSocketIds\[client\.clientId\] !== socketId/.test(voice),
+  /currentLobby === lobbyCode/.test(voice) && /socket\.emit\('id', playerId, clientId\)/.test(voice),
+  /myPlayer\?\.id/.test(voice.match(/\}, \[connect\?\.connect[\s\S]*?\]\);/)?.[0] ?? '') && /gameState\.clientId/.test(voice.match(/\}, \[connect\?\.connect[\s\S]*?\]\);/)?.[0] ?? ''),
 ];
 console.log(checks.filter((ok) => !ok).length);
 NODE
