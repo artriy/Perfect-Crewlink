@@ -29,7 +29,13 @@ check('overlay_visible_when_among_us_not_foreground', !/!\s*state\.is_foreground
 check('overlay_removed_unused_foreground_state', !/is_foreground/.test(lib) && !/GetForegroundWindow/.test(lib));
 check('overlay_embeds_as_among_us_child', /SetParent/.test(lib) && /WS_CHILD/.test(lib) && /GetClientRect/.test(lib));
 check('overlay_not_topmost_when_embedded', !/set_always_on_top\(true\)/.test(lib) && !/"alwaysOnTop": true/.test(read('src-tauri/tauri.conf.json')));
-check('overlay_child_z_order_top', /HWND_TOP/.test(lib) && !/SWP_NOZORDER \| SWP_NOACTIVATE \| SWP_FRAMECHANGED/.test(lib));
+check('overlay_child_z_order_top', (() => {
+  const start = lib.indexOf('fn set_overlay_child_styles');
+  const end = start >= 0 ? lib.indexOf('fn embed_overlay_window', start) : -1;
+  const styles = start >= 0 && end > start ? lib.slice(start, end) : '';
+  const sizeBlock = styles.match(/if let Some\(size\) = size[\s\S]*?SWP_NOACTIVATE \| SWP_FRAMECHANGED/)?.[0] ?? '';
+  return /Some\(HWND_TOP\)/.test(sizeBlock) && !/SWP_NOZORDER/.test(sizeBlock);
+})());
 const hideOverlayWindowStart = lib.indexOf('fn hide_overlay_window');
 const hideOverlayWindowEnd = hideOverlayWindowStart >= 0 ? lib.indexOf('fn refresh_overlay_window', hideOverlayWindowStart) : -1;
 const hideOverlayWindow = hideOverlayWindowStart >= 0 && hideOverlayWindowEnd > hideOverlayWindowStart ? lib.slice(hideOverlayWindowStart, hideOverlayWindowEnd) : '';
@@ -114,7 +120,13 @@ const checks = [
   !/is_foreground/.test(lib) && !/GetForegroundWindow/.test(lib),
   /SetParent/.test(lib) && /WS_CHILD/.test(lib) && /GetClientRect/.test(lib),
   !/set_always_on_top\(true\)/.test(lib) && !/"alwaysOnTop": true/.test(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8')),
-  /HWND_TOP/.test(lib) && !/SWP_NOZORDER \| SWP_NOACTIVATE \| SWP_FRAMECHANGED/.test(lib),
+  (() => {
+    const start = lib.indexOf('fn set_overlay_child_styles');
+    const end = start >= 0 ? lib.indexOf('fn embed_overlay_window', start) : -1;
+    const styles = start >= 0 && end > start ? lib.slice(start, end) : '';
+    const sizeBlock = styles.match(/if let Some\(size\) = size[\s\S]*?SWP_NOACTIVATE \| SWP_FRAMECHANGED/)?.[0] ?? '';
+    return /Some\(HWND_TOP\)/.test(sizeBlock) && !/SWP_NOZORDER/.test(sizeBlock);
+  })(),
   (() => {
     const hideOverlayWindowStart = lib.indexOf('fn hide_overlay_window');
     const hideOverlayWindowEnd = hideOverlayWindowStart >= 0 ? lib.indexOf('fn refresh_overlay_window', hideOverlayWindowStart) : -1;
