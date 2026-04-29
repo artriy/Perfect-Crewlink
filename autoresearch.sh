@@ -30,7 +30,9 @@ check('overlay_removed_unused_foreground_state', !/is_foreground/.test(lib) && !
 check('overlay_embeds_as_among_us_child', /SetParent/.test(lib) && /WS_CHILD/.test(lib) && /GetClientRect/.test(lib));
 check('overlay_not_topmost_when_embedded', !/set_always_on_top\(true\)/.test(lib) && !/"alwaysOnTop": true/.test(read('src-tauri/tauri.conf.json')));
 check('overlay_child_z_order_top', /HWND_TOP/.test(lib) && !/SWP_NOZORDER \| SWP_NOACTIVATE \| SWP_FRAMECHANGED/.test(lib));
-const hideOverlayWindow = lib.match(/fn hide_overlay_window[\s\S]*?\n}\n/)?.[0] ?? '';
+const hideOverlayWindowStart = lib.indexOf('fn hide_overlay_window');
+const hideOverlayWindowEnd = hideOverlayWindowStart >= 0 ? lib.indexOf('fn refresh_overlay_window', hideOverlayWindowStart) : -1;
+const hideOverlayWindow = hideOverlayWindowStart >= 0 && hideOverlayWindowEnd > hideOverlayWindowStart ? lib.slice(hideOverlayWindowStart, hideOverlayWindowEnd) : '';
 check('overlay_detaches_after_hide_without_forcing_visible', /window\.hide\(\)/.test(hideOverlayWindow) && /detach_overlay_window\(window\)/.test(hideOverlayWindow) && hideOverlayWindow.indexOf('window.hide()') < hideOverlayWindow.indexOf('detach_overlay_window(window)') && (lib.match(/hide_overlay_window\(&window\)/g)?.length ?? 0) >= 3 && !/let mut next_style = style \| WS_VISIBLE/.test(lib));
 check('meeting_order_frozen_for_all_huds', /frozenMeetingOrderRef/.test(overlay));
 check('meeting_slot_count_uses_frozen_slots', /aleLuduSlotCount/.test(overlay));
@@ -109,7 +111,9 @@ const checks = [
   !/set_always_on_top\(true\)/.test(lib) && !/"alwaysOnTop": true/.test(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8')),
   /HWND_TOP/.test(lib) && !/SWP_NOZORDER \| SWP_NOACTIVATE \| SWP_FRAMECHANGED/.test(lib),
   (() => {
-    const hideOverlayWindow = lib.match(/fn hide_overlay_window[\s\S]*?\n}\n/)?.[0] ?? '';
+    const hideOverlayWindowStart = lib.indexOf('fn hide_overlay_window');
+    const hideOverlayWindowEnd = hideOverlayWindowStart >= 0 ? lib.indexOf('fn refresh_overlay_window', hideOverlayWindowStart) : -1;
+    const hideOverlayWindow = hideOverlayWindowStart >= 0 && hideOverlayWindowEnd > hideOverlayWindowStart ? lib.slice(hideOverlayWindowStart, hideOverlayWindowEnd) : '';
     return /window\.hide\(\)/.test(hideOverlayWindow) && /detach_overlay_window\(window\)/.test(hideOverlayWindow) && hideOverlayWindow.indexOf('window.hide()') < hideOverlayWindow.indexOf('detach_overlay_window(window)') && (lib.match(/hide_overlay_window\(&window\)/g)?.length ?? 0) >= 3 && !/let mut next_style = style \| WS_VISIBLE/.test(lib);
   })(),
   /frozenMeetingOrderRef/.test(overlay),
