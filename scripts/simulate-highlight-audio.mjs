@@ -227,6 +227,11 @@ check(
 	/pan\.maxDistance = maxdistance/.test(voice),
 );
 check(
+	"source_audio_uses_near_field_ref_distance",
+	/AUDIO_NEAR_FIELD_DISTANCE/.test(voice) &&
+		/pan\.refDistance = AUDIO_NEAR_FIELD_DISTANCE/.test(voice),
+);
+check(
 	"source_voice_activity_requires_mapped_socket",
 	/const mappedClient = socketClientsRef\.current\[data\.socketId\]/.test(
 		voice,
