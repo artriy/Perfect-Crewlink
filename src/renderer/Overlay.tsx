@@ -236,6 +236,14 @@ function sortedMeetingPlayerIds(players: Player[]): number[] {
 		.map((entry) => entry.player.id);
 }
 
+function initialMeetingPlayerIds(gameState: AmongUsState, players: Player[]): number[] {
+	if (gameState.oldGameState !== GameState.TASKS) {
+		return players.map((player) => player.id);
+	}
+
+	return sortedMeetingPlayerIds(players);
+}
+
 function appendMissingMeetingPlayers(frozenIds: number[], players: Player[]): number[] {
 	const seen = new Set(frozenIds);
 	const missingIds = sortedMeetingPlayerIds(players).filter((id) => !seen.has(id));
@@ -292,6 +300,7 @@ function normalizeVoiceState(nextState: Partial<VoiceState> | null | undefined):
 }
 
 const OVERLAY_ROSTER_GRACE_MS = 2000;
+const OVERLAY_VOICE_ACTIVITY_GRACE_MS = 1500;
 
 interface StableOverlayPlayer {
 	player: Player;
@@ -519,13 +528,10 @@ const AvatarOverlay: React.FC<AvatarOverlayProps> = ({
 				}
 
 				const slot = next[clientId];
-				const connection = voiceState.clientConnections[clientId];
-				const recentlyConnected =
-					Boolean(connection?.connected) ||
-					(Boolean(connection?.lastSeenAt) && nowTick - connection.lastSeenAt <= OVERLAY_ROSTER_GRACE_MS);
+				const recentlyConnected = isClientVoiceStateFresh(slot.player, voiceState, nowTick);
 				const recentlyTalking =
-					Boolean(voiceState.otherTalking[clientId]) ||
-					(slot.player.isLocal && voiceState.localTalking);
+					recentlyConnected &&
+					(Boolean(voiceState.otherTalking[clientId]) || (slot.player.isLocal && voiceState.localTalking));
 
 				if (recentlyConnected || recentlyTalking || nowTick - slot.lastSeenAt <= OVERLAY_ROSTER_GRACE_MS) {
 					continue;
@@ -584,11 +590,7 @@ const AvatarOverlay: React.FC<AvatarOverlayProps> = ({
 		) {
 			return;
 		}
-		const clientConnection = voiceState.clientConnections[player.clientId];
-		const connected =
-			player.isLocal ||
-			Boolean(clientConnection?.connected) ||
-			(Boolean(clientConnection?.lastSeenAt) && nowTick - clientConnection.lastSeenAt <= OVERLAY_ROSTER_GRACE_MS);
+		const connected = isClientVoiceStateFresh(player, voiceState, nowTick);
 		if (!connected && !player.isLocal) {
 			return;
 		}
@@ -658,12 +660,27 @@ interface MeetingOverlaySlot {
 	player: Player | null;
 }
 
-function isMeetingPlayerTalking(player: Player, voiceState: VoiceState): boolean {
+function isClientVoiceStateFresh(player: Player, voiceState: VoiceState, now: number): boolean {
+	if (player.isLocal) {
+		return true;
+	}
+
+	const connection = voiceState.clientConnections[player.clientId];
+	return Boolean(
+		(Boolean(connection?.lastSeenAt) && now - connection.lastSeenAt <= OVERLAY_ROSTER_GRACE_MS) ||
+			(Boolean(connection?.lastAudioAt) && now - connection.lastAudioAt <= OVERLAY_VOICE_ACTIVITY_GRACE_MS)
+	);
+}
+
+function isMeetingPlayerTalking(player: Player, voiceState: VoiceState, now = Date.now()): boolean {
 	if (!player.isLocal && player.disconnected) {
 		return false;
 	}
 	const playerDead = player.isDead || Boolean(voiceState.otherDead[player.clientId]);
 	if (voiceState.localIsAlive && !player.isLocal && playerDead) {
+		return false;
+	}
+	if (!isClientVoiceStateFresh(player, voiceState, now)) {
 		return false;
 	}
 	return Boolean(voiceState.otherTalking[player.clientId] || (player.isLocal && voiceState.localTalking));
@@ -742,7 +759,7 @@ const MeetingHud: React.FC<MeetingHudProps> = ({ voiceState, gameState, playerCo
 		// clearing the ref).
 		if (gameState.gameState === GameState.DISCUSSION) {
 			if (frozenMeetingOrderRef.current === null) {
-				frozenMeetingOrderRef.current = sortedMeetingPlayerIds(src);
+				frozenMeetingOrderRef.current = initialMeetingPlayerIds(gameState, src);
 			} else if (src.length > frozenMeetingOrderRef.current.length || hasMissingMeetingPlayers(frozenMeetingOrderRef.current, src)) {
 				frozenMeetingOrderRef.current = appendMissingMeetingPlayers(frozenMeetingOrderRef.current, src);
 			}

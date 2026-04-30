@@ -67,8 +67,10 @@ interface AudioNodes {
 	gain: GainNode;
 	pan: PannerNode;
 	reverb: ConvolverNode;
+	radioMuffle: BiquadFilterNode;
 	muffle: BiquadFilterNode;
 	destination: AudioNode;
+	radioMuffleConnected: boolean;
 	reverbConnected: boolean;
 	muffleConnected: boolean;
 }
@@ -479,13 +481,18 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 		((gameState.hostId > 0 && gameState.isHost) || (resolvedHostId > 0 && resolvedHostId === gameState.clientId));
 
 	function updateAudioEffectChain(audio: AudioNodes, player: Player) {
-		const { gain, muffle, reverb, destination } = audio;
+		const { gain, radioMuffle, muffle, reverb, destination } = audio;
 		try {
 			gain.disconnect();
+			radioMuffle.disconnect();
 			muffle.disconnect();
 			reverb.disconnect();
 
 			let output: AudioNode = gain;
+			if (audio.radioMuffleConnected) {
+				output.connect(radioMuffle);
+				output = radioMuffle;
+			}
 			if (audio.muffleConnected) {
 				output.connect(muffle);
 				output = muffle;
@@ -529,13 +536,14 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 		other: Player,
 		audio: AudioNodes
 	): number {
-		const { pan, muffle, reverb } = audio;
+		const { pan, radioMuffle, muffle, reverb } = audio;
 		const useLightSource = true;
 		let maxdistance = maxDistanceRef.current;
 		let panPos = [other.x - me.x, other.y - me.y];
 		let endGain = 0;
 		let collided = false;
 		let skipDistanceCheck = false;
+		let radioMuffleEnabled = false;
 		let muffleEnabled = false;
 
 		if (other.disconnected || other.isDummy) {
@@ -580,12 +588,12 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 					other.clientId === impostorRadioClientId.current
 				) {
 					skipDistanceCheck = true;
-					muffle.type = 'highpass';
-					setSmoothedAudioParam(muffle.frequency, 1000, muffle.context);
-					setSmoothedAudioParam(muffle.Q, AUDIO_MUFFLE_Q, muffle.context);
-					muffleEnabled = true;
-					if (!audio.muffleConnected) {
-						audio.muffleConnected = true;
+					radioMuffle.type = 'highpass';
+					setSmoothedAudioParam(radioMuffle.frequency, 1000, radioMuffle.context);
+					setSmoothedAudioParam(radioMuffle.Q, AUDIO_MUFFLE_Q, radioMuffle.context);
+					radioMuffleEnabled = true;
+					if (!audio.radioMuffleConnected) {
+						audio.radioMuffleConnected = true;
 						updateAudioEffectChain(audio, other);
 					}
 				}
@@ -619,6 +627,11 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 
 		if (useLightSource && state.lightRadiusChanged) {
 			pan.maxDistance = maxDistanceRef.current;
+		}
+
+		if (audio.radioMuffleConnected && !radioMuffleEnabled) {
+			audio.radioMuffleConnected = false;
+			updateAudioEffectChain(audio, other);
 		}
 
 		if (!other.isDead || state.gameState !== GameState.TASKS || !me.isImpostor || me.isDead) {
@@ -855,6 +868,8 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 			audioElements.current[peer].pan.disconnect();
 			audioElements.current[peer].gain.disconnect();
 			// if (audioElements.current[peer].reverbGain != null) audioElements.current[peer].reverbGain?.disconnect();
+			if (audioElements.current[peer].radioMuffle != null) audioElements.current[peer].radioMuffle?.disconnect();
+			if (audioElements.current[peer].muffle != null) audioElements.current[peer].muffle?.disconnect();
 			if (audioElements.current[peer].reverb != null) audioElements.current[peer].reverb?.disconnect();
 			void audioElements.current[peer].context.close().catch(() => undefined);
 			delete audioElements.current[peer];
@@ -1586,6 +1601,9 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 					pan.maxDistance = maxDistanceRef.current;
 					pan.rolloffFactor = AUDIO_DISTANCE_ROLLOFF_FACTOR;
 
+					const radioMuffle = context.createBiquadFilter();
+					radioMuffle.type = 'highpass';
+
 					const muffle = context.createBiquadFilter();
 					muffle.type = 'lowpass';
 
@@ -1629,7 +1647,9 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 						gain,
 						pan,
 						reverb,
+						radioMuffle,
 						muffle,
+						radioMuffleConnected: false,
 						muffleConnected: false,
 						reverbConnected: false,
 						destination,
