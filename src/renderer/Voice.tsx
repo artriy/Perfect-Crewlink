@@ -689,6 +689,7 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 			panPos = [0, 0];
 		}
 
+		pan.maxDistance = maxdistance;
 		setTopDownPanPosition(pan, panPos);
 		return endGain;
 	}
