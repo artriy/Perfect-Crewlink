@@ -157,9 +157,6 @@ const REMOTE_AUDIO_SPEAKING_ON = 0.045;
 const REMOTE_AUDIO_SPEAKING_OFF = 0.024;
 const REMOTE_AUDIO_TALKING_GRACE_MS = 750;
 const AUDIO_PARAM_SMOOTHING_SECONDS = 0.04;
-const AUDIO_NEAR_FIELD_DISTANCE = 0.6;
-const AUDIO_DIRECTIONAL_FOCUS = 1.25;
-const AUDIO_DISTANCE_ROLLOFF_FACTOR = 1.25;
 const AUDIO_MUFFLE_Q = 0.8;
 const AUDIO_RADIO_MUFFLE_OFF_FREQUENCY = 10;
 const AUDIO_MUFFLE_OFF_FREQUENCY = 20000;
@@ -525,9 +522,9 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 
 	function setTopDownPanPosition(pan: PannerNode, panPos: number[]) {
 		const audioContext = pan.context;
-		setSmoothedAudioParam(pan.positionX, panPos[0] * AUDIO_DIRECTIONAL_FOCUS, audioContext);
-		setSmoothedAudioParam(pan.positionY, 0, audioContext);
-		setSmoothedAudioParam(pan.positionZ, -panPos[1] * AUDIO_DIRECTIONAL_FOCUS, audioContext);
+		setSmoothedAudioParam(pan.positionX, panPos[0], audioContext);
+		setSmoothedAudioParam(pan.positionY, panPos[1], audioContext);
+		setSmoothedAudioParam(pan.positionZ, -0.5, audioContext);
 	}
 
 	function calculateVoiceAudio(
@@ -714,7 +711,7 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 			panPos = [0, 0];
 		}
 
-		pan.maxDistance = maxdistance * AUDIO_DIRECTIONAL_FOCUS;
+		pan.maxDistance = maxdistance;
 		setTopDownPanPosition(pan, panPos);
 		return endGain;
 	}
@@ -1598,11 +1595,11 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 					const gain = context.createGain();
 					const pan = context.createPanner();
 					gain.gain.value = 0;
-					pan.refDistance = AUDIO_NEAR_FIELD_DISTANCE;
-					pan.panningModel = 'HRTF';
+					pan.refDistance = 0.1;
+					pan.panningModel = 'equalpower';
 					pan.distanceModel = 'linear';
 					pan.maxDistance = maxDistanceRef.current;
-					pan.rolloffFactor = AUDIO_DISTANCE_ROLLOFF_FACTOR;
+					pan.rolloffFactor = 1;
 
 					const radioMuffle = context.createBiquadFilter();
 					radioMuffle.type = 'highpass';
