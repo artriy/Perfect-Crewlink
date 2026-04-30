@@ -658,6 +658,14 @@ interface MeetingOverlaySlot {
 	player: Player | null;
 }
 
+function isMeetingPlayerTalking(player: Player, voiceState: VoiceState): boolean {
+	const playerDead = player.isDead || player.disconnected || Boolean(voiceState.otherDead[player.clientId]);
+	if (voiceState.localIsAlive && !player.isLocal && playerDead) {
+		return false;
+	}
+	return Boolean(voiceState.otherTalking[player.clientId] || (player.isLocal && voiceState.localTalking));
+}
+
 const MeetingHud: React.FC<MeetingHudProps> = ({ voiceState, gameState, playerColors, aleLuduMode, tuning }: MeetingHudProps) => {
 	const [windowWidth, windowheight] = useWindowSize();
 	const meetingHudRef = useRef<HTMLDivElement | null>(null);
@@ -905,6 +913,7 @@ const MeetingHud: React.FC<MeetingHudProps> = ({ voiceState, gameState, playerCo
 		const color = playerColors[player.colorId] ? playerColors[player.colorId][0] : '#C51111';
 		const aleLuduCardStyle =
 			!gameState.oldMeetingHud && aleLuduMode ? getAleLuduCardStyle(slotIndex, tuning) : undefined;
+		const talking = isMeetingPlayerTalking(player, voiceState);
 
 		return (
 			<div
@@ -915,7 +924,7 @@ const MeetingHud: React.FC<MeetingHudProps> = ({ voiceState, gameState, playerCo
 				}}
 				style={{
 					...aleLuduCardStyle,
-					opacity: voiceState.otherTalking[player.clientId] || (player.isLocal && voiceState.localTalking) ? 1 : 0,
+					opacity: talking ? 1 : 0,
 					border: 'solid',
 					borderWidth: '2px',
 					borderColor: '#00000037',
@@ -1024,9 +1033,7 @@ const MeetingHud: React.FC<MeetingHudProps> = ({ voiceState, gameState, playerCo
 					<div>legend: magenta=deterministic AleLudu slot</div>
 					<div style={{ marginTop: 8 }}>
 						{renderPlayers.map((player, index) => {
-							const talking = Boolean(
-								voiceState.otherTalking[player.clientId] || (player.isLocal && voiceState.localTalking)
-							);
+							const talking = isMeetingPlayerTalking(player, voiceState);
 
 							return (
 								<div key={`debug-line-${player.id}`}>
