@@ -397,6 +397,16 @@ check(
 		),
 );
 check(
+	"source_meeting_task_snapshot_captured_synchronously",
+	/function rememberTaskPlayers\(nextState: AmongUsState\)/.test(overlay) &&
+		/rememberTaskPlayers\(newState\);\s*setGameState\(newState\);/.test(
+			overlay,
+		) &&
+		/rememberTaskPlayers\(nextGameState\);\s*setGameState\(nextGameState\);/.test(
+			overlay,
+		),
+);
+check(
 	"source_audio_uses_bettercrewlink_xy_fixed_depth_axes",
 	/pan\.positionX/.test(voice) &&
 		/pan\.positionY/.test(voice) &&
