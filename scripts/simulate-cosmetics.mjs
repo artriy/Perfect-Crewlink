@@ -7,6 +7,8 @@ function read(path) {
 
 const cosmetics = read("src/renderer/cosmetics.ts");
 const avatar = read("src/renderer/Avatar.tsx");
+const gameReader = read("src/main/GameReader.ts");
+const gameSession = read("src-tauri/src/game_session.rs");
 
 let failures = 0;
 function check(name, ok, detail = "") {
@@ -54,6 +56,18 @@ check(
 	"source_cosmetics_handles_tou_mira_skin_suffix_aliases",
 	/replace\(\/skin\$\//.test(cosmetics) ||
 		/replace\(\/skins\?\$\//.test(cosmetics),
+);
+check(
+	"source_current_outfit_cosmetics_ts",
+	/else if \(key === currentOutfit\) \{[\s\S]*?data\.hat[\s\S]*?data\.skin[\s\S]*?data\.visor/.test(
+		gameReader,
+	),
+);
+check(
+	"source_current_outfit_cosmetics_rust",
+	/else if key == current_outfit as i32 \{[\s\S]*?parsed\.hat[\s\S]*?parsed\.skin[\s\S]*?parsed\.visor/.test(
+		gameSession,
+	),
 );
 
 console.log(`METRIC cosmetic_failures=${failures}`);
