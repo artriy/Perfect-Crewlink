@@ -166,6 +166,16 @@ check(
 		otherDead: { [deadSpeaker.clientId]: true },
 	}) === true,
 );
+const disconnectedSpeaker = makePlayer(6, { disconnected: true });
+check(
+	"meeting_disconnected_remote_never_highlighted",
+	expectedMeetingTalking(disconnectedSpeaker, {
+		localIsAlive: false,
+		localTalking: false,
+		otherTalking: { [disconnectedSpeaker.clientId]: true },
+		otherDead: {},
+	}) === false,
+);
 
 check(
 	"audio_right_maps_to_positive_x",
