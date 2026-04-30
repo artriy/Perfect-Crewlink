@@ -478,25 +478,30 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 		gameState.clientId > 0 &&
 		((gameState.hostId > 0 && gameState.isHost) || (resolvedHostId > 0 && resolvedHostId === gameState.clientId));
 
-	function applyEffect(gain: AudioNode, effectNode: AudioNode, destination: AudioNode, player: Player) {
-		console.log('Apply effect->', effectNode);
+	function updateAudioEffectChain(audio: AudioNodes, player: Player) {
+		const { gain, muffle, reverb, destination } = audio;
 		try {
-			gain.disconnect(destination);
-			gain.connect(effectNode);
-			effectNode.connect(destination);
-		} catch {
-			console.log('error with applying effect: ', player.name, effectNode);
-		}
-	}
+			gain.disconnect();
+			muffle.disconnect();
+			reverb.disconnect();
 
-	function restoreEffect(gain: AudioNode, effectNode: AudioNode, destination: AudioNode, player: Player) {
-		console.log('restore effect->', effectNode);
-		try {
-			effectNode.disconnect(destination);
-			gain.disconnect(effectNode);
-			gain.connect(destination);
+			let output: AudioNode = gain;
+			if (audio.muffleConnected) {
+				output.connect(muffle);
+				output = muffle;
+			}
+			if (audio.reverbConnected) {
+				output.connect(reverb);
+				output = reverb;
+			}
+			output.connect(destination);
 		} catch {
-			console.log('error with applying effect: ', player.name, effectNode);
+			console.log('error with audio effect chain: ', player.name);
+			try {
+				gain.connect(destination);
+			} catch {
+				// Ignore duplicate fallback connections.
+			}
 		}
 	}
 
@@ -524,7 +529,7 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 		other: Player,
 		audio: AudioNodes
 	): number {
-		const { pan, gain, muffle, reverb, destination } = audio;
+		const { pan, muffle, reverb } = audio;
 		const useLightSource = true;
 		let maxdistance = maxDistanceRef.current;
 		let panPos = [other.x - me.x, other.y - me.y];
@@ -581,14 +586,14 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 					muffleEnabled = true;
 					if (!audio.muffleConnected) {
 						audio.muffleConnected = true;
-						applyEffect(gain, muffle, destination, other);
+						updateAudioEffectChain(audio, other);
 					}
 				}
 
 				if (!me.isDead && other.isDead && me.isImpostor && lobbySettings.haunting) {
 					if (!audio.reverbConnected) {
 						audio.reverbConnected = true;
-						applyEffect(gain, reverb, destination, other);
+						updateAudioEffectChain(audio, other);
 					}
 					collided = false;
 					endGain = settings.ghostVolumeAsImpostor / 100;
@@ -619,7 +624,7 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 		if (!other.isDead || state.gameState !== GameState.TASKS || !me.isImpostor || me.isDead) {
 			if (audio.reverbConnected && reverb) {
 				audio.reverbConnected = false;
-				restoreEffect(gain, reverb, destination, other);
+				updateAudioEffectChain(audio, other);
 			}
 		}
 
@@ -677,7 +682,7 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 			muffle.type = 'lowpass';
 			if (!audio.muffleConnected) {
 				audio.muffleConnected = true;
-				applyEffect(gain, muffle, destination, other);
+				updateAudioEffectChain(audio, other);
 			}
 			maxdistance = isOnCamera ? 3 : 0.8;
 			setSmoothedAudioParam(muffle.frequency, isOnCamera ? 2300 : 2000, muffle.context);
@@ -686,7 +691,7 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 		} else {
 			if (audio.muffleConnected && !muffleEnabled) {
 				audio.muffleConnected = false;
-				restoreEffect(gain, muffle, destination, other);
+				updateAudioEffectChain(audio, other);
 			}
 		}
 
