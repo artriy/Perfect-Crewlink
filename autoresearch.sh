@@ -73,6 +73,10 @@ const noConnectionStart = disconnectPeerBody.indexOf('if (!connection)');
 const noConnectionReturn = noConnectionStart >= 0 ? disconnectPeerBody.indexOf('return;', noConnectionStart) : -1;
 const noConnectionBranch = noConnectionStart >= 0 && noConnectionReturn > noConnectionStart ? disconnectPeerBody.slice(noConnectionStart, noConnectionReturn) : '';
 check('disconnect_peer_cleans_audio_without_connection', /disconnectAudioElement\(peer\)/.test(noConnectionBranch));
+const audioMonitorStart = voice.indexOf('function startPeerAudioMonitor');
+const audioMonitorEnd = audioMonitorStart >= 0 ? voice.indexOf('function disconnectAudioElement', audioMonitorStart) : -1;
+const audioMonitorBody = audioMonitorStart >= 0 && audioMonitorEnd > audioMonitorStart ? voice.slice(audioMonitorStart, audioMonitorEnd) : '';
+check('audio_monitor_tracks_socket_mapped_client_id', /socketClientsRef\.current\[peer\]\?\.clientId \?\? monitor\.clientId/.test(audioMonitorBody) && /activeClientId !== monitor\.clientId/.test(audioMonitorBody) && /monitor\.clientId = activeClientId/.test(audioMonitorBody) && /updateClientAudioActivity\(monitor\.clientId/.test(audioMonitorBody) && !/updateClientAudioActivity\(clientId/.test(audioMonitorBody));
 
 console.log(`METRIC static_bug_checks=${bugScore}`);
 NODE
@@ -191,6 +195,12 @@ const checks = [
     const noConnectionReturn = noConnectionStart >= 0 ? disconnectPeerBody.indexOf('return;', noConnectionStart) : -1;
     const noConnectionBranch = noConnectionStart >= 0 && noConnectionReturn > noConnectionStart ? disconnectPeerBody.slice(noConnectionStart, noConnectionReturn) : '';
     return /disconnectAudioElement\(peer\)/.test(noConnectionBranch);
+  })(),
+  (() => {
+    const audioMonitorStart = voice.indexOf('function startPeerAudioMonitor');
+    const audioMonitorEnd = audioMonitorStart >= 0 ? voice.indexOf('function disconnectAudioElement', audioMonitorStart) : -1;
+    const audioMonitorBody = audioMonitorStart >= 0 && audioMonitorEnd > audioMonitorStart ? voice.slice(audioMonitorStart, audioMonitorEnd) : '';
+    return /socketClientsRef\.current\[peer\]\?\.clientId \?\? monitor\.clientId/.test(audioMonitorBody) && /activeClientId !== monitor\.clientId/.test(audioMonitorBody) && /monitor\.clientId = activeClientId/.test(audioMonitorBody) && /updateClientAudioActivity\(monitor\.clientId/.test(audioMonitorBody) && !/updateClientAudioActivity\(clientId/.test(audioMonitorBody);
   })(),
 ];
 console.log(checks.filter((ok) => !ok).length);
