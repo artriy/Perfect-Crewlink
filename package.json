@@ -1,6 +1,6 @@
 {
   "name": "perfect-crewlink",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "private": true,
   "license": "GPL-3.0-or-later",
   "description": "Perfect Crewlink desktop client rewritten with TypeScript, Tauri, and Rust",
