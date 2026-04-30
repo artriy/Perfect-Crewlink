@@ -155,6 +155,9 @@ const REMOTE_AUDIO_SPEAKING_OFF = 0.024;
 const REMOTE_AUDIO_TALKING_GRACE_MS = 750;
 const AUDIO_PARAM_SMOOTHING_SECONDS = 0.04;
 const AUDIO_NEAR_FIELD_DISTANCE = 0.6;
+const AUDIO_DIRECTIONAL_FOCUS = 1.25;
+const AUDIO_DISTANCE_ROLLOFF_FACTOR = 1.25;
+const AUDIO_MUFFLE_Q = 0.8;
 
 export interface VoiceProps {
 	t: (key: string) => string;
@@ -509,9 +512,9 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 
 	function setTopDownPanPosition(pan: PannerNode, panPos: number[]) {
 		const audioContext = pan.context;
-		setSmoothedAudioParam(pan.positionX, panPos[0], audioContext);
+		setSmoothedAudioParam(pan.positionX, panPos[0] * AUDIO_DIRECTIONAL_FOCUS, audioContext);
 		setSmoothedAudioParam(pan.positionY, 0, audioContext);
-		setSmoothedAudioParam(pan.positionZ, -panPos[1], audioContext);
+		setSmoothedAudioParam(pan.positionZ, -panPos[1] * AUDIO_DIRECTIONAL_FOCUS, audioContext);
 	}
 
 	function calculateVoiceAudio(
@@ -574,7 +577,7 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 					skipDistanceCheck = true;
 					muffle.type = 'highpass';
 					setSmoothedAudioParam(muffle.frequency, 1000, muffle.context);
-					setSmoothedAudioParam(muffle.Q, 10, muffle.context);
+					setSmoothedAudioParam(muffle.Q, AUDIO_MUFFLE_Q, muffle.context);
 					muffleEnabled = true;
 					if (!audio.muffleConnected) {
 						audio.muffleConnected = true;
@@ -678,7 +681,7 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 			}
 			maxdistance = isOnCamera ? 3 : 0.8;
 			setSmoothedAudioParam(muffle.frequency, isOnCamera ? 2300 : 2000, muffle.context);
-			setSmoothedAudioParam(muffle.Q, isOnCamera ? -15 : 20, muffle.context);
+			setSmoothedAudioParam(muffle.Q, AUDIO_MUFFLE_Q, muffle.context);
 			if (endGain === 1) endGain = isOnCamera ? 0.8 : 0.5; // Too loud at 1
 		} else {
 			if (audio.muffleConnected && !muffleEnabled) {
@@ -691,7 +694,7 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 			panPos = [0, 0];
 		}
 
-		pan.maxDistance = maxdistance;
+		pan.maxDistance = maxdistance * AUDIO_DIRECTIONAL_FOCUS;
 		setTopDownPanPosition(pan, panPos);
 		return endGain;
 	}
@@ -1576,7 +1579,7 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 					pan.panningModel = 'HRTF';
 					pan.distanceModel = 'linear';
 					pan.maxDistance = maxDistanceRef.current;
-					pan.rolloffFactor = 1;
+					pan.rolloffFactor = AUDIO_DISTANCE_ROLLOFF_FACTOR;
 
 					const muffle = context.createBiquadFilter();
 					muffle.type = 'lowpass';
@@ -1767,11 +1770,9 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 		if (!gameState || !gameState.players || !myPlayer) return [];
 		else otherPlayers = gameState.players.filter((p) => !p.isLocal);
 		maxDistanceRef.current = lobbySettings.visionHearing
-			? myPlayer.isImpostor
-				? lobbySettings.maxDistance
-				: gameState.lightRadius + 0.5
+			? Math.min(lobbySettings.maxDistance, gameState.lightRadius)
 			: lobbySettings.maxDistance;
-		if (maxDistanceRef.current <= 0.6) {
+		if (!lobbySettings.visionHearing && maxDistanceRef.current <= 0.6) {
 			maxDistanceRef.current = 1;
 		}
 		const handledPeerIds: string[] = [];
