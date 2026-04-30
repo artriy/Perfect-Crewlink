@@ -744,6 +744,18 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 		};
 
 		monitor.intervalId = window.setInterval(() => {
+			const activeClientId = socketClientsRef.current[peer]?.clientId ?? monitor.clientId;
+			if (activeClientId !== monitor.clientId) {
+				const oldClientId = monitor.clientId;
+				clearClientAudioActivity(oldClientId);
+				if (clientConnectionsRef.current[oldClientId]?.socketId === peer) {
+					upsertClientConnection(oldClientId, {
+						audioConnected: false,
+					});
+				}
+				monitor.clientId = activeClientId;
+			}
+
 			monitor.analyser.getFloatTimeDomainData(monitor.samples);
 			let sum = 0;
 			for (const sample of monitor.samples) {
@@ -768,13 +780,13 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 				monitor.lastActivityAt = Date.now();
 			}
 			const lastActivityAt = monitor.lastActivityAt;
-			updateClientAudioActivity(clientId, {
+			updateClientAudioActivity(monitor.clientId, {
 				level: monitor.smoothedLevel,
 				speaking: monitor.speaking,
 				audible: monitor.audible,
 				lastActivityAt,
 			});
-			upsertClientConnection(clientId, {
+			upsertClientConnection(monitor.clientId, {
 				audioConnected: true,
 				lastAudioAt: lastActivityAt,
 			});
