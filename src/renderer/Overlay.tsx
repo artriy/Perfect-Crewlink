@@ -659,7 +659,10 @@ interface MeetingOverlaySlot {
 }
 
 function isMeetingPlayerTalking(player: Player, voiceState: VoiceState): boolean {
-	const playerDead = player.isDead || player.disconnected || Boolean(voiceState.otherDead[player.clientId]);
+	if (!player.isLocal && player.disconnected) {
+		return false;
+	}
+	const playerDead = player.isDead || Boolean(voiceState.otherDead[player.clientId]);
 	if (voiceState.localIsAlive && !player.isLocal && playerDead) {
 		return false;
 	}
