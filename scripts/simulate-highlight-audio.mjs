@@ -406,6 +406,13 @@ check(
 		!/if \(audio\.muffleConnected\) \{\s*output\.connect\(muffle\)/.test(voice),
 );
 check(
+	"source_audio_has_output_limiter",
+	/createDynamicsCompressor/.test(voice) &&
+		/limiter\.threshold\.value/.test(voice) &&
+		/limiter\.ratio\.value/.test(voice) &&
+		/limiter\.connect\(destination\)/.test(voice),
+);
+check(
 	"source_voice_activity_requires_mapped_socket",
 	/const mappedClient = socketClientsRef\.current\[data\.socketId\]/.test(
 		voice,
