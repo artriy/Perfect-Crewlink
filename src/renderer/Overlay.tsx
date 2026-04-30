@@ -414,6 +414,20 @@ const Overlay: React.FC = function () {
 	);
 	const lastTaskPlayersRef = useRef<Player[] | null>(null);
 
+	function rememberTaskPlayers(nextState: AmongUsState) {
+		if (nextState.gameState === GameState.TASKS && nextState.players?.length) {
+			lastTaskPlayersRef.current = nextState.players.map((player) => ({
+				...player,
+			}));
+		} else if (
+			nextState.gameState === GameState.LOBBY ||
+			nextState.gameState === GameState.MENU ||
+			nextState.gameState === GameState.UNKNOWN
+		) {
+			lastTaskPlayersRef.current = null;
+		}
+	}
+
 	useEffect(() => {
 		let initRequests = 0;
 		const requestInitValues = () => {
@@ -427,6 +441,7 @@ const Overlay: React.FC = function () {
 		};
 
 		const onState = (_: unknown, newState: AmongUsState) => {
+			rememberTaskPlayers(newState);
 			setGameState(newState);
 		};
 		const onVoiceState = (_: unknown, newState: VoiceState) => {
@@ -450,6 +465,7 @@ const Overlay: React.FC = function () {
 					OVERLAY_STATE_KEYS.gameState,
 				);
 				if (nextGameState) {
+					rememberTaskPlayers(nextGameState);
 					setGameState(nextGameState);
 				}
 				return;
@@ -520,18 +536,8 @@ const Overlay: React.FC = function () {
 	}, []);
 
 	useEffect(() => {
-		if (gameState.gameState === GameState.TASKS && gameState.players?.length) {
-			lastTaskPlayersRef.current = gameState.players.map((player) => ({
-				...player,
-			}));
-		} else if (
-			gameState.gameState === GameState.LOBBY ||
-			gameState.gameState === GameState.MENU ||
-			gameState.gameState === GameState.UNKNOWN
-		) {
-			lastTaskPlayersRef.current = null;
-		}
-	}, [gameState.gameState, gameState.players]);
+		rememberTaskPlayers(gameState);
+	}, [gameState]);
 
 	if (
 		!settings ||
