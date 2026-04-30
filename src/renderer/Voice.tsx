@@ -154,6 +154,7 @@ const REMOTE_AUDIO_SPEAKING_ON = 0.045;
 const REMOTE_AUDIO_SPEAKING_OFF = 0.024;
 const REMOTE_AUDIO_TALKING_GRACE_MS = 750;
 const AUDIO_PARAM_SMOOTHING_SECONDS = 0.04;
+const AUDIO_NEAR_FIELD_DISTANCE = 0.6;
 
 export interface VoiceProps {
 	t: (key: string) => string;
@@ -1570,7 +1571,7 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 					const gain = context.createGain();
 					const pan = context.createPanner();
 					gain.gain.value = 0;
-					pan.refDistance = 0.1;
+					pan.refDistance = AUDIO_NEAR_FIELD_DISTANCE;
 					pan.panningModel = 'HRTF';
 					pan.distanceModel = 'linear';
 					pan.maxDistance = maxDistanceRef.current;
