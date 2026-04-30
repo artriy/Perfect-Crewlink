@@ -78,6 +78,14 @@ function overlaySlots(frozen, players) {
 	}));
 }
 
+function overlaySlotsAleLudu(frozen, players) {
+	const byId = new Map(players.map((player) => [player.id, player]));
+	return frozen
+		.map((id) => byId.get(id) ?? null)
+		.filter(Boolean)
+		.map((player, slotIndex) => ({ slotIndex, player }));
+}
+
 function expectedFreshConnection(player, voiceState, now) {
 	if (player.isLocal) return true;
 	const connection = voiceState.clientConnections?.[player.clientId];
@@ -145,6 +153,15 @@ const disconnectSlots = overlaySlots(
 check(
 	"meeting_disconnect_keeps_placeholder",
 	disconnectSlots[3]?.player === null && disconnectSlots[4]?.player?.id === 4,
+);
+const aleLuduDisconnectSlots = overlaySlotsAleLudu(
+	initialOrder,
+	disconnectedPlayers,
+);
+check(
+	"meeting_aleludu_disconnect_compacts_missing_slot",
+	aleLuduDisconnectSlots[3]?.player?.id === 4 &&
+		aleLuduDisconnectSlots[3]?.slotIndex === 3,
 );
 
 const replacementPlayers = basePlayers
@@ -295,6 +312,11 @@ check(
 		/isClientVoiceStateFresh\(player, voiceState/.test(overlay),
 );
 check(
+	"source_meeting_aleludu_compacts_missing_slots",
+	/if \(aleLuduColumns > 0\) \{[\s\S]*?slotIndex: index/.test(overlay) &&
+		!/if \(aleLuduColumns > 0 \|\| !order\)/.test(overlay),
+);
+check(
 	"source_audio_uses_top_down_xz_axes",
 	/pan\.positionX/.test(voice) &&
 		/pan\.positionY/.test(voice) &&
@@ -374,6 +396,14 @@ check(
 		/radioMuffle\.type = ['"]highpass['"]/.test(voice) &&
 		/muffle\.type = ['"]lowpass['"]/.test(voice) &&
 		!/muffle\.type = ['"]highpass['"]/.test(voice),
+);
+check(
+	"source_audio_keeps_muffles_in_permanent_chain",
+	/AUDIO_MUFFLE_OFF_FREQUENCY/.test(voice) &&
+		/gain\.connect\(radioMuffle\)/.test(voice) &&
+		/radioMuffle\.connect\(muffle\)/.test(voice) &&
+		/muffle\.connect\(destination\)/.test(voice) &&
+		!/if \(audio\.muffleConnected\) \{\s*output\.connect\(muffle\)/.test(voice),
 );
 check(
 	"source_voice_activity_requires_mapped_socket",
