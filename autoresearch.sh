@@ -53,7 +53,7 @@ check('rejoin_uses_player_id_not_client_id', !/connect\.connect\(gameState\.lobb
 check('spatial_audio_uses_top_down_axes', /setTopDownPanPosition/.test(voice) && !/pan\.positionY\.setValueAtTime\(panPos\[1\]/.test(voice));
 check('stale_vad_cannot_overwrite_socket_mapping', /isStaleClientSocketUpdate/.test(voice));
 const vadHandler = voice.match(/socket\.on\('VAD',[\s\S]*?\n\t\t\}\);/)?.[0] ?? '';
-check('vad_uses_socket_mapped_client_id', /socketClientsRef\.current\[data\.socketId\]\?\.clientId \?\? data\.client\.clientId/.test(vadHandler) && /isStaleClientSocketUpdate\(vadClientId, data\.socketId\)/.test(vadHandler) && /\[vadClientId\]: data\.activity/.test(vadHandler) && /upsertClientConnection\(vadClientId/.test(vadHandler));
+check('vad_requires_socket_mapped_client_id', /const mappedClient = socketClientsRef\.current\[data\.socketId\]/.test(vadHandler) && /if \(!mappedClient\)/.test(vadHandler) && /const vadClientId = mappedClient\.clientId/.test(vadHandler) && /isStaleClientSocketUpdate\(vadClientId, data\.socketId\)/.test(vadHandler) && /\[vadClientId\]: data\.activity/.test(vadHandler) && /upsertClientConnection\(vadClientId/.test(vadHandler) && !/\?\? data\.client\.clientId/.test(vadHandler));
 check('duplicate_client_socket_map_is_deduped', /preferSocketForClient/.test(voice) && /nextSocketIds\[client\.clientId\] !== socketId/.test(voice));
 check('connect_refreshes_same_lobby_ids', /currentLobby === lobbyCode/.test(voice) && /socket\.emit\('id', playerId, clientId\)/.test(voice));
 check('connect_effect_tracks_player_identity', /myPlayer\?\.id/.test(voice.match(/\}, \[connect\?\.connect[\s\S]*?\]\);/)?.[0] ?? '') && /gameState\.clientId/.test(voice.match(/\}, \[connect\?\.connect[\s\S]*?\]\);/)?.[0] ?? ''));
@@ -76,7 +76,7 @@ check('disconnect_peer_cleans_audio_without_connection', /disconnectAudioElement
 const audioMonitorStart = voice.indexOf('function startPeerAudioMonitor');
 const audioMonitorEnd = audioMonitorStart >= 0 ? voice.indexOf('function disconnectAudioElement', audioMonitorStart) : -1;
 const audioMonitorBody = audioMonitorStart >= 0 && audioMonitorEnd > audioMonitorStart ? voice.slice(audioMonitorStart, audioMonitorEnd) : '';
-check('audio_monitor_tracks_socket_mapped_client_id', /socketClientsRef\.current\[peer\]\?\.clientId \?\? monitor\.clientId/.test(audioMonitorBody) && /activeClientId !== monitor\.clientId/.test(audioMonitorBody) && /monitor\.clientId = activeClientId/.test(audioMonitorBody) && /updateClientAudioActivity\(monitor\.clientId/.test(audioMonitorBody) && !/updateClientAudioActivity\(clientId/.test(audioMonitorBody));
+check('audio_monitor_requires_socket_mapped_client_id', /const activeClientId = socketClientsRef\.current\[peer\]\?\.clientId;/.test(audioMonitorBody) && /if \(activeClientId === undefined\)/.test(audioMonitorBody) && /activeClientId !== monitor\.clientId/.test(audioMonitorBody) && /monitor\.clientId = activeClientId/.test(audioMonitorBody) && /updateClientAudioActivity\(monitor\.clientId/.test(audioMonitorBody) && !/\?\? monitor\.clientId/.test(audioMonitorBody) && !/updateClientAudioActivity\(clientId/.test(audioMonitorBody));
 
 console.log(`METRIC static_bug_checks=${bugScore}`);
 NODE
@@ -173,7 +173,7 @@ const checks = [
   /isStaleClientSocketUpdate/.test(voice),
   (() => {
     const vadHandler = voice.match(/socket\.on\('VAD',[\s\S]*?\n\t\t\}\);/)?.[0] ?? '';
-    return /socketClientsRef\.current\[data\.socketId\]\?\.clientId \?\? data\.client\.clientId/.test(vadHandler) && /isStaleClientSocketUpdate\(vadClientId, data\.socketId\)/.test(vadHandler) && /\[vadClientId\]: data\.activity/.test(vadHandler) && /upsertClientConnection\(vadClientId/.test(vadHandler);
+    return /const mappedClient = socketClientsRef\.current\[data\.socketId\]/.test(vadHandler) && /if \(!mappedClient\)/.test(vadHandler) && /const vadClientId = mappedClient\.clientId/.test(vadHandler) && /isStaleClientSocketUpdate\(vadClientId, data\.socketId\)/.test(vadHandler) && /\[vadClientId\]: data\.activity/.test(vadHandler) && /upsertClientConnection\(vadClientId/.test(vadHandler) && !/\?\? data\.client\.clientId/.test(vadHandler);
   })(),
   /preferSocketForClient/.test(voice) && /nextSocketIds\[client\.clientId\] !== socketId/.test(voice),
   /currentLobby === lobbyCode/.test(voice) && /socket\.emit\('id', playerId, clientId\)/.test(voice),
@@ -200,7 +200,7 @@ const checks = [
     const audioMonitorStart = voice.indexOf('function startPeerAudioMonitor');
     const audioMonitorEnd = audioMonitorStart >= 0 ? voice.indexOf('function disconnectAudioElement', audioMonitorStart) : -1;
     const audioMonitorBody = audioMonitorStart >= 0 && audioMonitorEnd > audioMonitorStart ? voice.slice(audioMonitorStart, audioMonitorEnd) : '';
-    return /socketClientsRef\.current\[peer\]\?\.clientId \?\? monitor\.clientId/.test(audioMonitorBody) && /activeClientId !== monitor\.clientId/.test(audioMonitorBody) && /monitor\.clientId = activeClientId/.test(audioMonitorBody) && /updateClientAudioActivity\(monitor\.clientId/.test(audioMonitorBody) && !/updateClientAudioActivity\(clientId/.test(audioMonitorBody);
+    return /const activeClientId = socketClientsRef\.current\[peer\]\?\.clientId;/.test(audioMonitorBody) && /if \(activeClientId === undefined\)/.test(audioMonitorBody) && /activeClientId !== monitor\.clientId/.test(audioMonitorBody) && /monitor\.clientId = activeClientId/.test(audioMonitorBody) && /updateClientAudioActivity\(monitor\.clientId/.test(audioMonitorBody) && !/\?\? monitor\.clientId/.test(audioMonitorBody) && !/updateClientAudioActivity\(clientId/.test(audioMonitorBody);
   })(),
 ];
 console.log(checks.filter((ok) => !ok).length);
