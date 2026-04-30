@@ -671,6 +671,7 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 			((me.inVent && !me.isDead) || (other.inVent && !other.isDead) || isOnCamera) &&
 			state.gameState === GameState.TASKS
 		) {
+			muffle.type = 'lowpass';
 			if (!audio.muffleConnected) {
 				audio.muffleConnected = true;
 				applyEffect(gain, muffle, destination, other);
