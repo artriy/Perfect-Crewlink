@@ -52,6 +52,8 @@ check('meeting_freeze_allows_initial_roster_growth', /src\.length > frozenMeetin
 check('rejoin_uses_player_id_not_client_id', !/connect\.connect\(gameState\.lobbyCode,\s*myPlayer\.clientId/.test(voice));
 check('spatial_audio_uses_top_down_axes', /setTopDownPanPosition/.test(voice) && !/pan\.positionY\.setValueAtTime\(panPos\[1\]/.test(voice));
 check('stale_vad_cannot_overwrite_socket_mapping', /isStaleClientSocketUpdate/.test(voice));
+const vadHandler = voice.match(/socket\.on\('VAD',[\s\S]*?\n\t\t\}\);/)?.[0] ?? '';
+check('vad_uses_socket_mapped_client_id', /socketClientsRef\.current\[data\.socketId\]\?\.clientId \?\? data\.client\.clientId/.test(vadHandler) && /isStaleClientSocketUpdate\(vadClientId, data\.socketId\)/.test(vadHandler) && /\[vadClientId\]: data\.activity/.test(vadHandler) && /upsertClientConnection\(vadClientId/.test(vadHandler));
 check('duplicate_client_socket_map_is_deduped', /preferSocketForClient/.test(voice) && /nextSocketIds\[client\.clientId\] !== socketId/.test(voice));
 check('connect_refreshes_same_lobby_ids', /currentLobby === lobbyCode/.test(voice) && /socket\.emit\('id', playerId, clientId\)/.test(voice));
 check('connect_effect_tracks_player_identity', /myPlayer\?\.id/.test(voice.match(/\}, \[connect\?\.connect[\s\S]*?\]\);/)?.[0] ?? '') && /gameState\.clientId/.test(voice.match(/\}, \[connect\?\.connect[\s\S]*?\]\);/)?.[0] ?? ''));
@@ -165,6 +167,10 @@ const checks = [
   !/connect\.connect\(gameState\.lobbyCode,\s*myPlayer\.clientId/.test(voice),
   /setTopDownPanPosition/.test(voice) && !/pan\.positionY\.setValueAtTime\(panPos\[1\]/.test(voice),
   /isStaleClientSocketUpdate/.test(voice),
+  (() => {
+    const vadHandler = voice.match(/socket\.on\('VAD',[\s\S]*?\n\t\t\}\);/)?.[0] ?? '';
+    return /socketClientsRef\.current\[data\.socketId\]\?\.clientId \?\? data\.client\.clientId/.test(vadHandler) && /isStaleClientSocketUpdate\(vadClientId, data\.socketId\)/.test(vadHandler) && /\[vadClientId\]: data\.activity/.test(vadHandler) && /upsertClientConnection\(vadClientId/.test(vadHandler);
+  })(),
   /preferSocketForClient/.test(voice) && /nextSocketIds\[client\.clientId\] !== socketId/.test(voice),
   /currentLobby === lobbyCode/.test(voice) && /socket\.emit\('id', playerId, clientId\)/.test(voice),
   /myPlayer\?\.id/.test(voice.match(/\}, \[connect\?\.connect[\s\S]*?\]\);/)?.[0] ?? '') && /gameState\.clientId/.test(voice.match(/\}, \[connect\?\.connect[\s\S]*?\]\);/)?.[0] ?? ''),
