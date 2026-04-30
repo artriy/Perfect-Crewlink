@@ -160,6 +160,8 @@ const AUDIO_NEAR_FIELD_DISTANCE = 0.6;
 const AUDIO_DIRECTIONAL_FOCUS = 1.25;
 const AUDIO_DISTANCE_ROLLOFF_FACTOR = 1.25;
 const AUDIO_MUFFLE_Q = 0.8;
+const AUDIO_RADIO_MUFFLE_OFF_FREQUENCY = 10;
+const AUDIO_MUFFLE_OFF_FREQUENCY = 20000;
 
 export interface VoiceProps {
 	t: (key: string) => string;
@@ -489,14 +491,10 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 			reverb.disconnect();
 
 			let output: AudioNode = gain;
-			if (audio.radioMuffleConnected) {
-				output.connect(radioMuffle);
-				output = radioMuffle;
-			}
-			if (audio.muffleConnected) {
-				output.connect(muffle);
-				output = muffle;
-			}
+			output.connect(radioMuffle);
+			output = radioMuffle;
+			output.connect(muffle);
+			output = muffle;
 			if (audio.reverbConnected) {
 				output.connect(reverb);
 				output = reverb;
@@ -594,7 +592,6 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 					radioMuffleEnabled = true;
 					if (!audio.radioMuffleConnected) {
 						audio.radioMuffleConnected = true;
-						updateAudioEffectChain(audio, other);
 					}
 				}
 
@@ -631,7 +628,8 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 
 		if (audio.radioMuffleConnected && !radioMuffleEnabled) {
 			audio.radioMuffleConnected = false;
-			updateAudioEffectChain(audio, other);
+			setSmoothedAudioParam(radioMuffle.frequency, AUDIO_RADIO_MUFFLE_OFF_FREQUENCY, radioMuffle.context);
+			setSmoothedAudioParam(radioMuffle.Q, AUDIO_MUFFLE_Q, radioMuffle.context);
 		}
 
 		if (!other.isDead || state.gameState !== GameState.TASKS || !me.isImpostor || me.isDead) {
@@ -693,9 +691,9 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 			state.gameState === GameState.TASKS
 		) {
 			muffle.type = 'lowpass';
+			muffleEnabled = true;
 			if (!audio.muffleConnected) {
 				audio.muffleConnected = true;
-				updateAudioEffectChain(audio, other);
 			}
 			maxdistance = isOnCamera ? 3 : 0.8;
 			setSmoothedAudioParam(muffle.frequency, isOnCamera ? 2300 : 2000, muffle.context);
@@ -704,7 +702,8 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 		} else {
 			if (audio.muffleConnected && !muffleEnabled) {
 				audio.muffleConnected = false;
-				updateAudioEffectChain(audio, other);
+				setSmoothedAudioParam(muffle.frequency, AUDIO_MUFFLE_OFF_FREQUENCY, muffle.context);
+				setSmoothedAudioParam(muffle.Q, AUDIO_MUFFLE_Q, muffle.context);
 			}
 		}
 
@@ -1603,9 +1602,13 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 
 					const radioMuffle = context.createBiquadFilter();
 					radioMuffle.type = 'highpass';
+					setSmoothedAudioParam(radioMuffle.frequency, AUDIO_RADIO_MUFFLE_OFF_FREQUENCY, context);
+					setSmoothedAudioParam(radioMuffle.Q, AUDIO_MUFFLE_Q, context);
 
 					const muffle = context.createBiquadFilter();
 					muffle.type = 'lowpass';
+					setSmoothedAudioParam(muffle.frequency, AUDIO_MUFFLE_OFF_FREQUENCY, context);
+					setSmoothedAudioParam(muffle.Q, AUDIO_MUFFLE_Q, context);
 
 					source.connect(analyser);
 					source.connect(pan);
@@ -1621,7 +1624,9 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 					// 		stereo: false,
 					// 	});
 					// }
-					gain.connect(destination);
+					gain.connect(radioMuffle);
+					radioMuffle.connect(muffle);
+					muffle.connect(destination);
 					const audio = document.createElement('audio') as ExtendedAudioElement;
 					document.body.appendChild(audio);
 					audio.setAttribute('autoplay', '');

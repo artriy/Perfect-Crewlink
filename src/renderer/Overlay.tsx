@@ -816,11 +816,19 @@ const MeetingHud: React.FC<MeetingHudProps> = ({ voiceState, gameState, playerCo
 	})();
 	const overlaySlots: MeetingOverlaySlot[] = (() => {
 		const order = frozenMeetingOrderRef.current;
-		if (aleLuduColumns > 0 || !order) {
+		if (aleLuduColumns > 0) {
 			return renderPlayers.map((player, index) => ({
 				key: `player-${player.id}`,
 				player,
-				slotIndex: frozenCardIndexById.get(player.id) ?? index,
+				slotIndex: index,
+			}));
+		}
+
+		if (!order) {
+			return renderPlayers.map((player, index) => ({
+				key: `player-${player.id}`,
+				player,
+				slotIndex: index,
 			}));
 		}
 
@@ -889,7 +897,7 @@ const MeetingHud: React.FC<MeetingHudProps> = ({ voiceState, gameState, playerCo
 	});
 	const debugGuides = showAleLuduDebug
 		? renderPlayers.map((player, index) => {
-				const cardIndex = frozenCardIndexById.get(player.id) ?? index;
+				const cardIndex = aleLuduColumns > 0 ? index : frozenCardIndexById.get(player.id) ?? index;
 				const fallbackStyle = getAleLuduCardStyle(cardIndex, tuning);
 
 				return (
