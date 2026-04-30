@@ -290,6 +290,17 @@ check(
 		/pan\.rolloffFactor = AUDIO_DISTANCE_ROLLOFF_FACTOR/.test(voice),
 );
 check(
+	"source_audio_rebuilds_single_effect_chain",
+	/function updateAudioEffectChain/.test(voice) &&
+		/gain\.disconnect\(\)/.test(voice) &&
+		/muffle\.disconnect\(\)/.test(voice) &&
+		/reverb\.disconnect\(\)/.test(voice) &&
+		/audio\.muffleConnected/.test(voice) &&
+		/audio\.reverbConnected/.test(voice) &&
+		!/function applyEffect/.test(voice) &&
+		!/function restoreEffect/.test(voice),
+);
+check(
 	"source_voice_activity_requires_mapped_socket",
 	/const mappedClient = socketClientsRef\.current\[data\.socketId\]/.test(
 		voice,
