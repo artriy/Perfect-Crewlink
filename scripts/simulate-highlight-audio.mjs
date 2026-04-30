@@ -75,10 +75,11 @@ function overlaySlots(frozen, players) {
 }
 
 function expectedMeetingTalking(player, voiceState) {
+	if (!player.isLocal && player.disconnected) {
+		return false;
+	}
 	const playerDead =
-		player.isDead ||
-		player.disconnected ||
-		Boolean(voiceState.otherDead[player.clientId]);
+		player.isDead || Boolean(voiceState.otherDead[player.clientId]);
 	if (voiceState.localIsAlive && !player.isLocal && playerDead) {
 		return false;
 	}
@@ -209,6 +210,12 @@ check(
 		/voiceState\.otherDead\[player\.clientId\]/.test(overlay) &&
 		/player\.isDead/.test(overlay) &&
 		/player\.disconnected/.test(overlay),
+);
+check(
+	"source_meeting_highlight_filters_disconnected_remote",
+	/if \(!player\.isLocal && player\.disconnected\) \{\s*return false;\s*\}/.test(
+		overlay,
+	),
 );
 check(
 	"source_audio_uses_top_down_xz_axes",
