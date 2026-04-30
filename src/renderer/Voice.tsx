@@ -744,7 +744,21 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 		};
 
 		monitor.intervalId = window.setInterval(() => {
-			const activeClientId = socketClientsRef.current[peer]?.clientId ?? monitor.clientId;
+			const activeClientId = socketClientsRef.current[peer]?.clientId;
+			if (activeClientId === undefined) {
+				clearClientAudioActivity(monitor.clientId);
+				if (clientConnectionsRef.current[monitor.clientId]?.socketId === peer) {
+					upsertClientConnection(monitor.clientId, {
+						audioConnected: false,
+					});
+				}
+				monitor.smoothedLevel = 0;
+				monitor.speaking = false;
+				monitor.audible = false;
+				monitor.lastActivityAt = 0;
+				return;
+			}
+
 			if (activeClientId !== monitor.clientId) {
 				const oldClientId = monitor.clientId;
 				clearClientAudioActivity(oldClientId);
@@ -754,6 +768,10 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 					});
 				}
 				monitor.clientId = activeClientId;
+				monitor.smoothedLevel = 0;
+				monitor.speaking = false;
+				monitor.audible = false;
+				monitor.lastActivityAt = 0;
 			}
 
 			monitor.analyser.getFloatTimeDomainData(monitor.samples);
@@ -1316,7 +1334,12 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 		});
 
 		socket.on('VAD', (data: { activity: boolean; client: Client; socketId: string }) => {
-			const vadClientId = socketClientsRef.current[data.socketId]?.clientId ?? data.client.clientId;
+			const mappedClient = socketClientsRef.current[data.socketId];
+			if (!mappedClient) {
+				return;
+			}
+
+			const vadClientId = mappedClient.clientId;
 			if (isStaleClientSocketUpdate(vadClientId, data.socketId)) {
 				return;
 			}
