@@ -573,8 +573,8 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 				) {
 					skipDistanceCheck = true;
 					muffle.type = 'highpass';
-					muffle.frequency.value = 1000;
-					muffle.Q.value = 10;
+					setSmoothedAudioParam(muffle.frequency, 1000, muffle.context);
+					setSmoothedAudioParam(muffle.Q, 10, muffle.context);
 					muffleEnabled = true;
 					if (!audio.muffleConnected) {
 						audio.muffleConnected = true;
@@ -676,8 +676,8 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 				applyEffect(gain, muffle, destination, other);
 			}
 			maxdistance = isOnCamera ? 3 : 0.8;
-			muffle.frequency.value = isOnCamera ? 2300 : 2000;
-			muffle.Q.value = isOnCamera ? -15 : 20;
+			setSmoothedAudioParam(muffle.frequency, isOnCamera ? 2300 : 2000, muffle.context);
+			setSmoothedAudioParam(muffle.Q, isOnCamera ? -15 : 20, muffle.context);
 			if (endGain === 1) endGain = isOnCamera ? 0.8 : 0.5; // Too loud at 1
 		} else {
 			if (audio.muffleConnected && !muffleEnabled) {
