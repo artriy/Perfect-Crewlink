@@ -59,6 +59,13 @@ function rawMeetingPlayerIds(players) {
 	return players.map((player) => player.id);
 }
 
+function initialMeetingPlayerIdsForMode(oldGameState, players, aleLuduMode) {
+	if (aleLuduMode || oldGameState !== "TASKS") {
+		return rawMeetingPlayerIds(players);
+	}
+	return sortedMeetingPlayerIds(players);
+}
+
 function updateFrozenOrder(frozen, players) {
 	if (!frozen) return sortedMeetingPlayerIds(players);
 	if (
@@ -138,6 +145,25 @@ check(
 	"meeting_mid_round_bootstrap_keeps_reader_order",
 	JSON.stringify(rawMeetingPlayerIds(midMeetingBootstrapPlayers)) ===
 		JSON.stringify(basePlayers.map((player) => player.id)),
+);
+const preDeadTransitionPlayers = basePlayers.map((player) =>
+	[1, 6].includes(player.id) ? { ...player, isDead: true } : player,
+);
+check(
+	"meeting_aleludu_predead_transition_keeps_reader_order",
+	JSON.stringify(
+		initialMeetingPlayerIdsForMode("TASKS", preDeadTransitionPlayers, true),
+	) === JSON.stringify(basePlayers.map((player) => player.id)),
+);
+check(
+	"meeting_vanilla_predead_transition_sorts_alive_first",
+	JSON.stringify(
+		initialMeetingPlayerIdsForMode(
+			"TASKS",
+			preDeadTransitionPlayers,
+			false,
+		).slice(-2),
+	) === JSON.stringify([1, 6]),
 );
 
 const killedPlayers = basePlayers.map((player) =>
@@ -339,6 +365,18 @@ check(
 		/!player\.bugged/.test(overlay) &&
 		/!player\.isDummy/.test(overlay) &&
 		/renderPlayers\.filter\(isVisibleAleLuduMeetingPlayer\)/.test(overlay),
+);
+check(
+	"source_meeting_aleludu_initial_order_uses_reader_order",
+	/function initialMeetingPlayerIds\(gameState: AmongUsState, players: Player\[], aleLuduMode/.test(
+		overlay,
+	) &&
+		/if \(aleLuduMode \|\| gameState\.oldGameState !== GameState\.TASKS\)/.test(
+			overlay,
+		) &&
+		/initialMeetingPlayerIds\(gameState, src, aleLuduColumns > 0\)/.test(
+			overlay,
+		),
 );
 check(
 	"source_audio_uses_bettercrewlink_xy_fixed_depth_axes",
