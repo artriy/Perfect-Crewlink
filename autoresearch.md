@@ -1,17 +1,19 @@
-# Autoresearch: overlay and voice correctness
+# Autoresearch: vision-gated immersive audio
 
 ## Objective
 
-Fix requested runtime bugs without benchmark cheating:
+Fix requested runtime audio issues without benchmark cheating:
 
-- Overlay must stay visible/attached to the Among Us window after Alt-Tab while the game window is not minimized.
-- Meeting highlight must stay on the same player slot throughout a meeting.
-- Proximity audio must use the correct peer/player mapping and stable 2D spatial coordinates.
+- When **vision hearing** is enabled, proximity audio must not be audible beyond the local player's current light/vision radius.
+- Remote voices must not buzz, ring, glitch, or turn static-like during vent/camera/radio muffling or movement updates.
+- Directional audio should feel more focused and spatially precise without breaking existing peer/player mapping or meeting highlights.
 
 ## Metrics
 
-- **Primary**: bug_score (unitless, lower is better) — static regression score for root causes found in current code.
+- **Primary**: bug_score (unitless, lower is better) — static + simulation regression score for known audio/overlay/cosmetic root causes.
 - **Secondary**: typecheck_fail — 0 means `npm run typecheck` passed, 1 means failed.
+- **Secondary**: build_fail — 0 means production Vite build passed.
+- **Secondary**: rust_check_fail — 0 means Rust `cargo check` passed.
 
 ## How to Run
 
@@ -19,40 +21,27 @@ Fix requested runtime bugs without benchmark cheating:
 
 ## Files in Scope
 
-- `src-tauri/src/lib.rs` — overlay window placement/visibility on Windows.
-- `src/renderer/App.tsx` — decides when overlay window should be enabled.
-- `src/renderer/Overlay.tsx` — avatar overlay and meeting highlight placement.
-- `src/renderer/Voice.tsx` — peer/client mapping, talking state, proximity audio spatialization.
-- `src/common/AmongUsState.ts` — shared state shape only if required.
+- `src/renderer/Voice.tsx` — proximity range, VAD/audio activity, panner/gain/filter spatialization.
+- `src/renderer/Overlay.tsx` — meeting highlight regressions only if audio state affects highlights.
+- `src/renderer/Avatar.tsx` and `src/renderer/cosmetics.ts` — keep TOU Mira cosmetic regressions covered.
+- `src/main/GameReader.ts` and `src-tauri/src/game_session.rs` — keep current-outfit cosmetic reads covered.
+- `scripts/simulate-highlight-audio.mjs`, `scripts/simulate-cosmetics.mjs`, `autoresearch.sh` — simulation harness.
 
 ## Off Limits
 
-- Do not modify voice server protocol beyond existing fields.
-- Do not change AleLudu calibration constants unless fixing slot stability needs it.
-- Do not commit local calibration/build artifacts (`.calib`, `editions`, nested `src-tauri/src-tauri`, halo config files).
+- Do not modify the voice server protocol beyond existing fields.
+- Do not fake metric output or bypass real validation.
+- Do not add dependencies unless absolutely necessary.
+- Do not commit local calibration/build artifacts (`.calib`, `editions`, nested `src-tauri/src-tauri`, halo config files, release assets).
 
 ## Constraints
 
-- No new dependencies.
 - Keep changes surgical.
-- TypeScript typecheck should stay green or improve.
-- Do not overfit by faking metric output; metric checks represent known bug root causes and must reflect real code behavior.
+- TypeScript typecheck, Vite build, and Rust check should stay green.
+- Preserve existing fixes: overlay Alt-Tab attachment, stable meeting slots, mapped voice activity, TOU Mira cosmetics, and current-outfit reads.
 
-## What's Been Tried
+## Current Hypotheses
 
-- Baseline inspection found likely causes:
-  - `src-tauri/src/lib.rs` hides overlay when Among Us is not foreground.
-  - `Overlay.tsx` freezes meeting order only for AleLudu, so vanilla/new HUD can reshuffle when dead/disconnected state changes.
-  - `Voice.tsx` has one reconnect path passing `myPlayer.clientId` as server `playerId`.
-  - `Voice.tsx` writes game Y to WebAudio vertical Y axis and fixed Z; top-down 2D audio should keep vertical Y at 0 and use Z for game Y.
-  - `Voice.tsx` lets stale VAD socket IDs overwrite active client/socket mapping.
-- Kept fixes so far:
-  - Overlay now stays visible when Among Us loses foreground focus, hiding only when game window is minimized/missing.
-  - Meeting overlay uses one frozen slot order for every HUD and lets the frozen order grow while initial roster data arrives.
-  - Voice spatialization maps top-down game coordinates to WebAudio X/Z axes and keeps vertical Y fixed at 0.
-  - Voice peer mapping ignores stale VAD socket updates, dedupes duplicate sockets per client, and refreshes server identity when player id becomes available.
-  - Voice dead-state metadata now tracks live player updates, not only game-state transitions.
-  - Camera-based proximity audio now safely handles maps/mods with missing camera metadata.
-  - Talking highlights now require recent remote audio activity when using server VAD, reducing stale/wrong highlights.
-  - `debugMode` was added to `ISettings`, making `npm run typecheck` pass.
-  - `autoresearch.sh` now validates static root-cause checks, TypeScript typecheck, production Vite build, and Rust `cargo check`.
+- Vision-only hearing is bypassed for impostors and padded by `+ 0.5`, so some players remain audible outside the visible radius.
+- Biquad filter `Q` values for camera/vent/radio muffling are too resonant or invalid (for example negative camera Q), causing ringing/static/buzzing.
+- Directional audio can feel too broad because distance rolloff and panner separation are conservative; a small focus factor and stronger rolloff may improve spatial precision while preserving hard max range.

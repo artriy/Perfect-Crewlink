@@ -97,6 +97,10 @@ function smoothValue(current, target, time, timeConstant) {
 	return target + (current - target) * Math.exp(-time / timeConstant);
 }
 
+function effectiveVisionDistance(visionHearing, maxDistance, lightRadius) {
+	return visionHearing ? Math.min(maxDistance, lightRadius) : maxDistance;
+}
+
 const basePlayers = Array.from({ length: 10 }, (_, id) => makePlayer(id));
 const initialOrder = updateFrozenOrder(null, basePlayers);
 
@@ -202,6 +206,12 @@ check(
 	"audio_smoothing_moves_toward_target_without_overshoot",
 	smoothed > 0 && smoothed < 10,
 );
+check(
+	"audio_vision_hearing_caps_to_light_radius",
+	effectiveVisionDistance(true, 5, 2) === 2 &&
+		effectiveVisionDistance(true, 1.5, 2) === 1.5 &&
+		effectiveVisionDistance(false, 5, 2) === 5,
+);
 
 check(
 	"source_meeting_highlight_filters_dead_for_alive_local",
@@ -260,6 +270,24 @@ const ventMuffleBlock =
 check(
 	"source_audio_sets_vent_camera_lowpass_type",
 	/muffle\.type = ['"]lowpass['"]/.test(ventMuffleBlock),
+);
+check(
+	"source_audio_vision_hearing_caps_to_light_radius",
+	/Math\.min\(lobbySettings\.maxDistance, gameState\.lightRadius\)/.test(
+		voice,
+	) && !/gameState\.lightRadius \+ 0\.5/.test(voice),
+);
+check(
+	"source_audio_muffle_q_is_non_resonant",
+	/AUDIO_MUFFLE_Q/.test(voice) &&
+		!/isOnCamera \? -15 : 20/.test(voice) &&
+		!/setSmoothedAudioParam\(muffle\.Q, 10/.test(voice),
+);
+check(
+	"source_audio_directional_focus_configured",
+	/AUDIO_DIRECTIONAL_FOCUS/.test(voice) &&
+		/AUDIO_DISTANCE_ROLLOFF_FACTOR/.test(voice) &&
+		/pan\.rolloffFactor = AUDIO_DISTANCE_ROLLOFF_FACTOR/.test(voice),
 );
 check(
 	"source_voice_activity_requires_mapped_socket",
