@@ -69,6 +69,7 @@ interface AudioNodes {
 	reverb: ConvolverNode;
 	radioMuffle: BiquadFilterNode;
 	muffle: BiquadFilterNode;
+	limiter: DynamicsCompressorNode;
 	destination: AudioNode;
 	radioMuffleConnected: boolean;
 	reverbConnected: boolean;
@@ -483,12 +484,13 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 		((gameState.hostId > 0 && gameState.isHost) || (resolvedHostId > 0 && resolvedHostId === gameState.clientId));
 
 	function updateAudioEffectChain(audio: AudioNodes, player: Player) {
-		const { gain, radioMuffle, muffle, reverb, destination } = audio;
+		const { gain, radioMuffle, muffle, reverb, limiter, destination } = audio;
 		try {
 			gain.disconnect();
 			radioMuffle.disconnect();
 			muffle.disconnect();
 			reverb.disconnect();
+			limiter.disconnect();
 
 			let output: AudioNode = gain;
 			output.connect(radioMuffle);
@@ -499,7 +501,8 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 				output.connect(reverb);
 				output = reverb;
 			}
-			output.connect(destination);
+			output.connect(limiter);
+			limiter.connect(destination);
 		} catch {
 			console.log('error with audio effect chain: ', player.name);
 			try {
@@ -870,6 +873,7 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 			if (audioElements.current[peer].radioMuffle != null) audioElements.current[peer].radioMuffle?.disconnect();
 			if (audioElements.current[peer].muffle != null) audioElements.current[peer].muffle?.disconnect();
 			if (audioElements.current[peer].reverb != null) audioElements.current[peer].reverb?.disconnect();
+			if (audioElements.current[peer].limiter != null) audioElements.current[peer].limiter?.disconnect();
 			void audioElements.current[peer].context.close().catch(() => undefined);
 			delete audioElements.current[peer];
 		}
@@ -1616,6 +1620,12 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 
 					const reverb = context.createConvolver();
 					reverb.buffer = convolverBuffer.current;
+					const limiter = context.createDynamicsCompressor();
+					limiter.threshold.value = -8;
+					limiter.knee.value = 6;
+					limiter.ratio.value = 20;
+					limiter.attack.value = 0.003;
+					limiter.release.value = 0.08;
 					const destination: AudioNode = dest;
 					// if (settingsRef.current.vadEnabled) {
 					// 	VAD(context, gain, undefined, {
@@ -1626,7 +1636,8 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 					// }
 					gain.connect(radioMuffle);
 					radioMuffle.connect(muffle);
-					muffle.connect(destination);
+					muffle.connect(limiter);
+					limiter.connect(destination);
 					const audio = document.createElement('audio') as ExtendedAudioElement;
 					document.body.appendChild(audio);
 					audio.setAttribute('autoplay', '');
@@ -1654,6 +1665,7 @@ const Voice: React.FC<VoiceProps> = function ({ t, error: initialError }: VoiceP
 						reverb,
 						radioMuffle,
 						muffle,
+						limiter,
 						radioMuffleConnected: false,
 						muffleConnected: false,
 						reverbConnected: false,
