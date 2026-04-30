@@ -78,11 +78,15 @@ function overlaySlots(frozen, players) {
 	}));
 }
 
+function isVisibleAleLuduMeetingPlayer(player) {
+	return !player.disconnected && !player.bugged && !player.isDummy;
+}
+
 function overlaySlotsAleLudu(frozen, players) {
 	const byId = new Map(players.map((player) => [player.id, player]));
 	return frozen
 		.map((id) => byId.get(id) ?? null)
-		.filter(Boolean)
+		.filter((player) => player && isVisibleAleLuduMeetingPlayer(player))
 		.map((player, slotIndex) => ({ slotIndex, player }));
 }
 
@@ -162,6 +166,18 @@ check(
 	"meeting_aleludu_disconnect_compacts_missing_slot",
 	aleLuduDisconnectSlots[3]?.player?.id === 4 &&
 		aleLuduDisconnectSlots[3]?.slotIndex === 3,
+);
+const hiddenAleLuduPlayers = basePlayers.map((player) =>
+	player.id === 3 ? { ...player, disconnected: true, bugged: true } : player,
+);
+const hiddenAleLuduSlots = overlaySlotsAleLudu(
+	initialOrder,
+	hiddenAleLuduPlayers,
+);
+check(
+	"meeting_aleludu_hidden_players_do_not_shift_edges",
+	hiddenAleLuduSlots[3]?.player?.id === 4 &&
+		hiddenAleLuduSlots[3]?.slotIndex === 3,
 );
 
 const replacementPlayers = basePlayers
@@ -315,6 +331,14 @@ check(
 	"source_meeting_aleludu_compacts_missing_slots",
 	/if \(aleLuduColumns > 0\) \{[\s\S]*?slotIndex: index/.test(overlay) &&
 		!/if \(aleLuduColumns > 0 \|\| !order\)/.test(overlay),
+);
+check(
+	"source_meeting_aleludu_skips_hidden_players",
+	/function isVisibleAleLuduMeetingPlayer/.test(overlay) &&
+		/!player\.disconnected/.test(overlay) &&
+		/!player\.bugged/.test(overlay) &&
+		/!player\.isDummy/.test(overlay) &&
+		/renderPlayers\.filter\(isVisibleAleLuduMeetingPlayer\)/.test(overlay),
 );
 check(
 	"source_audio_uses_bettercrewlink_xy_fixed_depth_axes",
