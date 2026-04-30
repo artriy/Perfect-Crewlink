@@ -59,8 +59,16 @@ function rawMeetingPlayerIds(players) {
 	return players.map((player) => player.id);
 }
 
-function initialMeetingPlayerIdsForMode(oldGameState, players, aleLuduMode) {
-	if (aleLuduMode || oldGameState !== "TASKS") {
+function initialMeetingPlayerIdsForMode(
+	oldGameState,
+	players,
+	aleLuduMode,
+	meetingStartPlayers = null,
+) {
+	if (aleLuduMode && oldGameState === "TASKS" && meetingStartPlayers?.length) {
+		return sortedMeetingPlayerIds(meetingStartPlayers);
+	}
+	if (oldGameState !== "TASKS") {
 		return rawMeetingPlayerIds(players);
 	}
 	return sortedMeetingPlayerIds(players);
@@ -146,24 +154,32 @@ check(
 	JSON.stringify(rawMeetingPlayerIds(midMeetingBootstrapPlayers)) ===
 		JSON.stringify(basePlayers.map((player) => player.id)),
 );
-const preDeadTransitionPlayers = basePlayers.map((player) =>
+const preDeadTaskPlayers = basePlayers.map((player) =>
 	[1, 6].includes(player.id) ? { ...player, isDead: true } : player,
 );
-check(
-	"meeting_aleludu_predead_transition_keeps_reader_order",
-	JSON.stringify(
-		initialMeetingPlayerIdsForMode("TASKS", preDeadTransitionPlayers, true),
-	) === JSON.stringify(basePlayers.map((player) => player.id)),
+const firstDiscussionAfterGuesses = preDeadTaskPlayers.map((player) =>
+	[2, 3].includes(player.id) ? { ...player, isDead: true } : player,
 );
 check(
-	"meeting_vanilla_predead_transition_sorts_alive_first",
+	"meeting_aleludu_transition_uses_premeeting_dead_state",
 	JSON.stringify(
 		initialMeetingPlayerIdsForMode(
 			"TASKS",
-			preDeadTransitionPlayers,
+			firstDiscussionAfterGuesses,
+			true,
+			preDeadTaskPlayers,
+		),
+	) === JSON.stringify([0, 2, 3, 4, 5, 7, 8, 9, 1, 6]),
+);
+check(
+	"meeting_vanilla_predead_transition_sorts_current_alive_first",
+	JSON.stringify(
+		initialMeetingPlayerIdsForMode(
+			"TASKS",
+			firstDiscussionAfterGuesses,
 			false,
-		).slice(-2),
-	) === JSON.stringify([1, 6]),
+		).slice(-4),
+	) === JSON.stringify([1, 2, 3, 6]),
 );
 
 const killedPlayers = basePlayers.map((player) =>
@@ -369,14 +385,14 @@ check(
 		),
 );
 check(
-	"source_meeting_aleludu_initial_order_uses_reader_order",
-	/function initialMeetingPlayerIds\(\s*gameState: AmongUsState,\s*players: Player\[\],\s*aleLuduMode: boolean,?\s*\)/.test(
-		overlay,
-	) &&
-		/if \(aleLuduMode \|\| gameState\.oldGameState !== GameState\.TASKS\)/.test(
+	"source_meeting_aleludu_initial_order_uses_premeeting_dead_state",
+	/lastTaskPlayersRef/.test(overlay) &&
+		/meetingStartPlayers\??: Player\[\] \| null/.test(overlay) &&
+		/function initialMeetingPlayerIds\(\s*gameState: AmongUsState,\s*players: Player\[\],\s*aleLuduMode: boolean,\s*meetingStartPlayers\??: Player\[\] \| null,?\s*\)/.test(
 			overlay,
 		) &&
-		/initialMeetingPlayerIds\(\s*gameState,\s*src,\s*aleLuduColumns > 0,?\s*\)/.test(
+		/sortedMeetingPlayerIds\(meetingStartPlayers\)/.test(overlay) &&
+		/initialMeetingPlayerIds\(\s*gameState,\s*src,\s*aleLuduColumns > 0,\s*meetingStartPlayers,?\s*\)/.test(
 			overlay,
 		),
 );
