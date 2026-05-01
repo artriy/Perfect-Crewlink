@@ -1422,6 +1422,14 @@ impl AmongUsReader {
             return None;
         }
 
+        if raw_cards.len() != count {
+            return None;
+        }
+
+        if !self.meeting_card_order.is_empty() && self.meeting_card_order.len() != raw_cards.len() {
+            self.meeting_card_order.clear();
+        }
+
         if self.meeting_card_order.is_empty() {
             raw_cards.sort_by_key(|card| card.am_dead);
         } else {
