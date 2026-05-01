@@ -626,7 +626,6 @@ interface MeetingHudProps {
 
 interface MeetingOverlaySlot {
 	key: string;
-	slotIndex: number;
 	player: Player | null;
 }
 
@@ -788,7 +787,6 @@ const MeetingHud: React.FC<MeetingHudProps> = ({
 						? `meetingCard-${card.playerId}`
 						: `meetingCardPlaceholder-${card.playerId}-${index}`,
 					player,
-					slotIndex: card.slotIndex ?? index,
 				};
 			});
 		}
@@ -798,7 +796,6 @@ const MeetingHud: React.FC<MeetingHudProps> = ({
 			return renderPlayers.map((player, index) => ({
 				key: `player-${player.id}-${index}`,
 				player: visibleMeetingSlotPlayer(player),
-				slotIndex: index,
 			}));
 		}
 
@@ -809,7 +806,6 @@ const MeetingHud: React.FC<MeetingHudProps> = ({
 					? `player-${player.id}`
 					: `meetingPlaceholder-${id}-${index}`,
 				player,
-				slotIndex: index,
 			};
 		});
 	})();
