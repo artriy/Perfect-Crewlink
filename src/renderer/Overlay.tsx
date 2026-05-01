@@ -128,18 +128,7 @@ const iPadRatio = 854 / 579;
 
 const ALE_LUDU_COLUMNS = 4;
 
-// Default tuning — matches the SettingsStore default. Live values come from
-// settings.aleLuduTuning (user-tunable in the Settings page). The mod's actual
-// world-space formula is:
-//    pos = VoteOrigin + (dx*col*0.75 - 0.375, dy*row*0.75, z)  with scale = 0.75
-// We don't have VoteOrigin / VoteButtonOffsets at runtime, so the user dials
-// the equivalent %-of-meetingHud values plus the meetingHud/tablet rect
-// overrides (% of viewport / % of meetingHud respectively) in the Settings panel.
-// Live-calibrated defaults from the in-game AleLudu meeting overlay session.
-// The legacy single-knob fields below are kept for the resolveColumnTuning fallback
-// (when a saved config predates per-column data); the actual source-of-truth
-// positions live in BASE_ALE_LUDU_COLUMNS and are hand-tuned per column because
-// column pitch is NOT perfectly uniform (24.1 → 24.5 between neighbours).
+// Legacy fallback only. Primary card identity comes from Rust MeetingHud cards.
 const BASE_ALE_LUDU_TUNING = {
 	col0CenterPct: 13.8,
 	colPitchPct: 24.0,
@@ -157,9 +146,6 @@ const BASE_ALE_LUDU_TUNING = {
 	tabletHeightPct: 100.0,
 };
 
-// Exact per-column values dialed in live so the magenta calibration grid lines up
-// with the AleLudu mod's tablet slots. Widths + row metrics are constant across
-// columns; centres are non-uniform.
 const BASE_ALE_LUDU_COLUMNS: AleLuduColumnTuning[] = [
 	{
 		centerPct: 13.8,

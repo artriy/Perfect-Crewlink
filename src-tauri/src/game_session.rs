@@ -48,6 +48,31 @@ const CAMERA_NONE: u8 = 7;
 const RAINBOW_COLOR_ID: i32 = -99234;
 const MINI_REGION_INSTALL_CONFIG: &str = "at.duikbo.regioninstall.cfg";
 
+// 2024 x86 IL2CPP field offsets from .calib/dump/dump.cs. Used only as an
+// authoritative MeetingHud card identity source; unsupported layouts fall back
+// to the normal player list snapshot instead of guessing.
+const MEETING_HUD_VOTE_ORIGIN_OFFSET_X86: u64 = 0x40;
+const MEETING_HUD_VOTE_BUTTON_OFFSETS_OFFSET_X86: u64 = 0x4c;
+const MEETING_HUD_PLAYER_STATES_OFFSET_X86: u64 = 0x5c;
+const PLAYER_VOTE_AREA_TARGET_PLAYER_ID_OFFSET_X86: u64 = 0x14;
+const PLAYER_VOTE_AREA_AM_DEAD_OFFSET_X86: u64 = 0x59;
+const IL2CPP_ARRAY_LENGTH_OFFSET_X86: u64 = 0x0c;
+const IL2CPP_ARRAY_DATA_OFFSET_X86: u64 = 0x10;
+const VANILLA_MEETING_COLUMNS: usize = 3;
+
+#[derive(Clone, Copy)]
+struct Vec3 {
+    x: f32,
+    y: f32,
+    z: f32,
+}
+
+#[derive(Clone, Copy)]
+struct RawMeetingCard {
+    player_id: u32,
+    am_dead: bool,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum SessionPhase {
@@ -65,6 +90,7 @@ pub struct MeetingHudCard {
     pub player_id: u32,
     pub client_id: Option<u32>,
     pub visible: bool,
+    pub am_dead: bool,
     pub world_x: Option<f32>,
     pub world_y: Option<f32>,
     pub world_z: Option<f32>,
@@ -1263,6 +1289,15 @@ impl AmongUsReader {
             return None;
         }
 
+        if let Some(cards) = self.read_meeting_cards_from_player_vote_areas(meeting_hud, players) {
+            return Some(MeetingHudSnapshot {
+                state: meeting_hud_state,
+                source: "player_vote_area".to_string(),
+                old_hud: self.old_meeting_hud,
+                cards,
+            });
+        }
+
         let cards = players
             .iter()
             .enumerate()
@@ -1271,6 +1306,7 @@ impl AmongUsReader {
                 player_id: player.id,
                 client_id: Some(player.client_id),
                 visible: !player.disconnected && !player.bugged && !player.is_dummy,
+                am_dead: player.is_dead,
                 world_x: None,
                 world_y: None,
                 world_z: None,
@@ -1285,6 +1321,107 @@ impl AmongUsReader {
             old_hud: self.old_meeting_hud,
             cards,
         })
+    }
+
+    fn read_meeting_cards_from_player_vote_areas(
+        &self,
+        meeting_hud: u64,
+        players: &[Player],
+    ) -> Option<Vec<MeetingHudCard>> {
+        if self.is_64_bit {
+            return None;
+        }
+
+        let player_states = self
+            .read_pointer_absolute(meeting_hud + MEETING_HUD_PLAYER_STATES_OFFSET_X86)
+            .ok()?;
+        if player_states == 0 {
+            return None;
+        }
+
+        let count = self
+            .read_u32_absolute(player_states + IL2CPP_ARRAY_LENGTH_OFFSET_X86)
+            .ok()?
+            .min(40) as usize;
+        if count == 0 {
+            return None;
+        }
+
+        let mut raw_cards = Vec::with_capacity(count);
+        for index in 0..count {
+            let entry = player_states + IL2CPP_ARRAY_DATA_OFFSET_X86 + index as u64 * self.pointer_size() as u64;
+            let Ok(vote_area) = self.read_pointer_absolute(entry) else {
+                continue;
+            };
+            if vote_area == 0 {
+                continue;
+            }
+
+            let Ok(target_player_id) = self.read_u8_absolute(vote_area + PLAYER_VOTE_AREA_TARGET_PLAYER_ID_OFFSET_X86) else {
+                continue;
+            };
+            if target_player_id >= 252 {
+                continue;
+            }
+            let am_dead = self
+                .read_u8_absolute(vote_area + PLAYER_VOTE_AREA_AM_DEAD_OFFSET_X86)
+                .map(|value| value != 0)
+                .unwrap_or(false);
+            raw_cards.push(RawMeetingCard {
+                player_id: target_player_id as u32,
+                am_dead,
+            });
+        }
+
+        if raw_cards.is_empty() {
+            return None;
+        }
+
+        raw_cards.sort_by_key(|card| card.am_dead);
+        let vote_origin = self
+            .read_vec3_absolute(meeting_hud + MEETING_HUD_VOTE_ORIGIN_OFFSET_X86)
+            .ok();
+        let vote_button_offsets = self
+            .read_vec3_absolute(meeting_hud + MEETING_HUD_VOTE_BUTTON_OFFSETS_OFFSET_X86)
+            .ok();
+
+        let player_by_id: HashMap<u32, &Player> = players.iter().map(|player| (player.id, player)).collect();
+        Some(
+            raw_cards
+                .into_iter()
+                .enumerate()
+                .map(|(slot_index, card)| {
+                    let player = player_by_id.get(&card.player_id).copied();
+                    let (world_x, world_y, world_z) = match (vote_origin, vote_button_offsets) {
+                        (Some(origin), Some(offsets)) => {
+                            let column = (slot_index % VANILLA_MEETING_COLUMNS) as f32;
+                            let row = (slot_index / VANILLA_MEETING_COLUMNS) as f32;
+                            (
+                                Some(origin.x + offsets.x * column),
+                                Some(origin.y + offsets.y * row),
+                                Some(origin.z + offsets.z),
+                            )
+                        }
+                        _ => (None, None, None),
+                    };
+
+                    MeetingHudCard {
+                        slot_index: slot_index as u32,
+                        player_id: card.player_id,
+                        client_id: player.map(|player| player.client_id),
+                        visible: player
+                            .map(|player| !player.disconnected && !player.bugged && !player.is_dummy)
+                            .unwrap_or(false),
+                        am_dead: card.am_dead,
+                        world_x,
+                        world_y,
+                        world_z,
+                        width: None,
+                        height: None,
+                    }
+                })
+                .collect(),
+        )
     }
 
     fn load_colors(&mut self, snapshot: &SharedSessionSnapshot) -> Result<(), String> {
@@ -1658,6 +1795,14 @@ impl AmongUsReader {
 
     fn read_f32_absolute(&self, address: u64) -> Result<f32, String> {
         self.process.read_f32(address)
+    }
+
+    fn read_vec3_absolute(&self, address: u64) -> Result<Vec3, String> {
+        Ok(Vec3 {
+            x: self.read_f32_absolute(address)?,
+            y: self.read_f32_absolute(address + 4)?,
+            z: self.read_f32_absolute(address + 8)?,
+        })
     }
 
     fn read_string(&self, address: u64, max_length: usize) -> Result<String, String> {

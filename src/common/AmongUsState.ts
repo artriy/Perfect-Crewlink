@@ -36,6 +36,7 @@ export interface MeetingHudCard {
 	playerId: number;
 	clientId?: number | null;
 	visible: boolean;
+	amDead: boolean;
 	worldX?: number | null;
 	worldY?: number | null;
 	worldZ?: number | null;
