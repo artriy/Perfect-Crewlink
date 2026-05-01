@@ -13,7 +13,7 @@ User-selected scope:
 
 ## Metrics
 
-- **Primary**: `purity_highlight_score` (unitless, lower is better) — weighted score combining non-Rust runtime surface, highlight hardcode failures, Rust-sourced meeting-card failures, and build/check failures.
+- **Primary**: `purity_highlight_score_v2` (unitless, lower is better) — weighted score combining non-Rust runtime surface, highlight hardcode failures, Rust-sourced meeting-card failures, and build/check failures.
 - **Secondary**: `non_rust_runtime_files` — count of TypeScript/JavaScript runtime files still under `src/` plus frontend config files.
 - **Secondary**: `non_rust_runtime_loc` — line count for those non-Rust runtime files.
 - **Secondary**: `highlight_static_failures` — known bad highlight patterns still present.

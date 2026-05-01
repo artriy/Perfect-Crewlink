@@ -180,7 +180,7 @@ const typecheckFail = Number(typecheckFailRaw);
 const buildFail = Number(buildFailRaw);
 const purityHighlightScore =
   metrics.staticScore + cargoCheckFail * 10000 + typecheckFail * 5000 + buildFail * 5000;
-console.log(`METRIC purity_highlight_score=${purityHighlightScore}`);
+console.log(`METRIC purity_highlight_score_v2=${purityHighlightScore}`);
 console.log(`METRIC non_rust_runtime_files=${metrics.nonRustRuntimeFiles}`);
 console.log(`METRIC non_rust_runtime_loc=${metrics.nonRustRuntimeLoc}`);
 console.log(`METRIC highlight_static_failures=${metrics.highlightStaticFailures}`);
