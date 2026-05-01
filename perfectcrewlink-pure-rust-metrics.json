@@ -1,10 +1,10 @@
 {
-  "nonRustRuntimeFiles": 58,
-  "nonRustRuntimeLoc": 18875,
+  "nonRustRuntimeFiles": 54,
+  "nonRustRuntimeLoc": 18469,
   "highlightStaticFailures": 5,
   "rustMeetingSourceFailures": 0,
   "frontendSurfaceFailures": 6,
-  "staticScore": 40675,
+  "staticScore": 39869,
   "failed": [
     "overlay_not_using_hardcoded_aleludu_columns",
     "overlay_not_using_base_aleludu_tuning_percentages",
