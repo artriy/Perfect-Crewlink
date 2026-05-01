@@ -88,55 +88,6 @@ function useWindowSize() {
 	return windowSize;
 }
 
-function sortedMeetingPlayerIds(players: Player[]): number[] {
-	return players
-		.map((player, index) => ({ player, index }))
-		.sort((a, b) => {
-			const aDead = a.player.isDead ? 1 : 0;
-			const bDead = b.player.isDead ? 1 : 0;
-			if (aDead !== bDead) return aDead - bDead;
-			return a.index - b.index;
-		})
-		.map((entry) => entry.player.id);
-}
-
-function initialMeetingPlayerIds(
-	gameState: AmongUsState,
-	players: Player[],
-	meetingStartPlayers?: Player[] | null,
-): number[] {
-	if (
-		gameState.oldGameState === GameState.TASKS &&
-		meetingStartPlayers?.length
-	) {
-		return sortedMeetingPlayerIds(meetingStartPlayers);
-	}
-	if (gameState.oldGameState !== GameState.TASKS) {
-		return players.map((player) => player.id);
-	}
-
-	return sortedMeetingPlayerIds(players);
-}
-
-function appendMissingMeetingPlayers(
-	frozenIds: number[],
-	players: Player[],
-): number[] {
-	const seen = new Set(frozenIds);
-	const missingIds = sortedMeetingPlayerIds(players).filter(
-		(id) => !seen.has(id),
-	);
-	return missingIds.length === 0 ? frozenIds : [...frozenIds, ...missingIds];
-}
-
-function hasMissingMeetingPlayers(
-	frozenIds: number[],
-	players: Player[],
-): boolean {
-	const seen = new Set(frozenIds);
-	return players.some((player) => !seen.has(player.id));
-}
-
 const EMPTY_GAME_STATE: AmongUsState = {
 	gameState: GameState.UNKNOWN,
 	oldGameState: GameState.UNKNOWN,
@@ -213,22 +164,6 @@ const Overlay: React.FC = function () {
 			readOverlayState<string[][]>(OVERLAY_STATE_KEYS.playerColors) ??
 			DEFAULT_PLAYERCOLORS,
 	);
-	const lastTaskPlayersRef = useRef<Player[] | null>(null);
-
-	function rememberTaskPlayers(nextState: AmongUsState) {
-		if (nextState.gameState === GameState.TASKS && nextState.players?.length) {
-			lastTaskPlayersRef.current = nextState.players.map((player) => ({
-				...player,
-			}));
-		} else if (
-			nextState.gameState === GameState.LOBBY ||
-			nextState.gameState === GameState.MENU ||
-			nextState.gameState === GameState.UNKNOWN
-		) {
-			lastTaskPlayersRef.current = null;
-		}
-	}
-
 	useEffect(() => {
 		let initRequests = 0;
 		const requestInitValues = () => {
@@ -242,7 +177,6 @@ const Overlay: React.FC = function () {
 		};
 
 		const onState = (_: unknown, newState: AmongUsState) => {
-			rememberTaskPlayers(newState);
 			setGameState(newState);
 		};
 		const onVoiceState = (_: unknown, newState: VoiceState) => {
@@ -266,7 +200,6 @@ const Overlay: React.FC = function () {
 					OVERLAY_STATE_KEYS.gameState,
 				);
 				if (nextGameState) {
-					rememberTaskPlayers(nextGameState);
 					setGameState(nextGameState);
 				}
 				return;
@@ -336,9 +269,6 @@ const Overlay: React.FC = function () {
 		};
 	}, []);
 
-	useEffect(() => {
-		rememberTaskPlayers(gameState);
-	}, [gameState]);
 
 	if (
 		!settings ||
@@ -357,7 +287,6 @@ const Overlay: React.FC = function () {
 						gameState={gameState}
 						voiceState={voiceState}
 						playerColors={playerColors}
-						meetingStartPlayers={lastTaskPlayersRef.current}
 					/>
 				)}
 			{settings.overlayPosition !== "hidden" && (
@@ -621,21 +550,11 @@ interface MeetingHudProps {
 	gameState: AmongUsState;
 	voiceState: VoiceState;
 	playerColors: string[][];
-	meetingStartPlayers?: Player[] | null;
 }
 
 interface MeetingOverlaySlot {
 	key: string;
 	player: Player | null;
-}
-
-function isVisibleMeetingPlayer(player: Player): boolean {
-	return !player.disconnected && !player.bugged && !player.isDummy;
-}
-
-function visibleMeetingSlotPlayer(player: Player | null): Player | null {
-	if (!player) return null;
-	return isVisibleMeetingPlayer(player) ? player : null;
 }
 
 function isClientVoiceStateFresh(
@@ -682,135 +601,33 @@ const MeetingHud: React.FC<MeetingHudProps> = ({
 	voiceState,
 	gameState,
 	playerColors,
-	meetingStartPlayers,
 }: MeetingHudProps) => {
 	const [windowWidth, windowheight] = useWindowSize();
-	// Frozen player slot order captured on the first render of this MeetingHud instance.
-	// The vanilla tablet only sorts alive-first when the meeting starts — it does NOT
-	// re-shuffle slots when a player dies mid-meeting (guess / Jailor execute / etc.).
-	// Without this freeze, our overlay re-sorts on every `gameState.players` push and the
-	// coloured card boxes jump to the wrong tiles for the rest of the meeting.
-	// MeetingHud unmounts when discussion ends, so the ref is re-initialised per meeting.
-	const frozenMeetingOrderRef = useRef<number[] | null>(null);
 	const [width, height] = useMemo(
 		() => [windowWidth, windowheight],
 		[windowWidth, windowheight],
 	);
-
-	const players = useMemo(() => {
-		if (!gameState.players || gameState.players.length === 0) return null;
-		const src = gameState.players;
-
-		// The meeting tablet orders alive players before dead players when the meeting
-		// starts. Rust meetingHud.cards is preferred below, but this frozen fallback
-		// keeps the generic overlay stable when direct card data is unavailable.
-		// CRITICAL: the vanilla tablet does NOT re-sort when someone dies mid-meeting
-		// (guess / Jailor execute / etc.). The dead player keeps their slot, they just
-		// get the "DEAD" overlay. If we re-sort on every render the way we used to, the
-		// card positions jump the instant isDead flips and every tile after the newly
-		// dead player renders on the wrong face. We freeze the order on first render and
-		// reuse it for the rest of the meeting (MeetingHud remounts each new meeting,
-		// clearing the ref).
-		if (gameState.gameState === GameState.DISCUSSION) {
-			if (frozenMeetingOrderRef.current === null) {
-				frozenMeetingOrderRef.current = initialMeetingPlayerIds(
-					gameState,
-					src,
-					meetingStartPlayers,
-				);
-			} else if (
-				src.length > frozenMeetingOrderRef.current.length ||
-				hasMissingMeetingPlayers(frozenMeetingOrderRef.current, src)
-			) {
-				frozenMeetingOrderRef.current = appendMissingMeetingPlayers(
-					frozenMeetingOrderRef.current,
-					src,
-				);
-			}
-
-			const frozen = frozenMeetingOrderRef.current;
-			const byId = new Map<number, Player>();
-			for (const player of src) {
-				byId.set(player.id, player);
-			}
-
-			const ordered: Player[] = [];
-			const seen = new Set<number>();
-			for (const id of frozen) {
-				const player = byId.get(id);
-				if (player) {
-					ordered.push(player);
-					seen.add(id);
-				}
-			}
-			// Late joiners or replacement players that weren't in the frozen snapshot
-			// get appended at the end rather than dropped (extremely rare, but safe).
-			for (const player of src) {
-				if (!seen.has(player.id)) {
-					ordered.push(player);
-				}
-			}
-			return ordered;
-		}
-
-		return src.slice().sort((a, b) => {
-			if ((a.disconnected || a.isDead) && (b.disconnected || b.isDead)) {
-				return a.id - b.id;
-			} else if (a.disconnected || a.isDead) {
-				return 1000;
-			} else if (b.disconnected || b.isDead) {
-				return -1000;
-			}
-			return a.id - b.id;
-		});
-	}, [
-		gameState.gameState,
-		gameState.players,
-		meetingStartPlayers,
-	]);
-	const renderPlayers = players ?? [];
 	const rustMeetingCards =
 		gameState.gameState === GameState.DISCUSSION
 			? gameState.meetingHud?.cards
 			: undefined;
-	const overlaySlots: MeetingOverlaySlot[] = (() => {
-		const playerById = new Map(
-			renderPlayers.map((player) => [player.id, player]),
-		);
-		if (rustMeetingCards?.length) {
-			return rustMeetingCards.map((card, index) => {
-				const player = card.visible
-					? (playerById.get(card.playerId) ?? null)
-					: null;
-				return {
-					key: player
-						? `meetingCard-${card.playerId}`
-						: `meetingCardPlaceholder-${card.playerId}-${index}`,
-					player,
-				};
-			});
-		}
-
-		const order = frozenMeetingOrderRef.current;
-		if (!order) {
-			return renderPlayers.map((player, index) => ({
-				key: `player-${player.id}-${index}`,
-				player: visibleMeetingSlotPlayer(player),
-			}));
-		}
-
-		return order.map((id, index) => {
-			const player = visibleMeetingSlotPlayer(playerById.get(id) ?? null);
+	const playerById = new Map(
+		(gameState.players ?? []).map((player) => [player.id, player]),
+	);
+	const overlaySlots: MeetingOverlaySlot[] =
+		rustMeetingCards?.map((card, index) => {
+			const player = card.visible
+				? (playerById.get(card.playerId) ?? null)
+				: null;
 			return {
 				key: player
-					? `player-${player.id}`
-					: `meetingPlaceholder-${id}-${index}`,
+					? `meetingCard-${card.playerId}`
+					: `meetingCardPlaceholder-${card.playerId}-${index}`,
 				player,
 			};
-		});
-	})();
+		}) ?? [];
 	const canRenderMeetingHud =
-		gameState.gameState === GameState.DISCUSSION && renderPlayers.length > 0;
+		gameState.gameState === GameState.DISCUSSION && overlaySlots.length > 0;
 	const classes = useStyles({
 		width,
 		height,
