@@ -1,103 +1,80 @@
 <div align="center">
 
-<!-- Animated Hero Banner -->
 <img src="static/images/header-banner.svg" alt="Perfect Crewlink" width="100%"/>
 
 <br/>
 
-<!-- Typing animation tagline -->
-<a href="https://github.com/artriy/Perfect-Crewlink">
-  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=600&size=20&duration=3500&pause=800&color=24C8DB&center=true&vCenter=true&multiline=true&repeat=true&width=780&height=70&lines=Faster+startup.+Leaner+runtime.+Sharper+overlays.;Built+for+speed%2C+stability%2C+mods%2C+and+clean+streaming." alt="Typing SVG" />
-</a>
+**Fast, polished proximity chat for Among Us — rebuilt with Tauri, Rust, and a cleaner desktop experience.**
 
 <br/>
 
-<!-- Primary action badges -->
-<a href="https://github.com/artriy/Perfect-Crewlink/releases/latest"><img src="https://img.shields.io/badge/-DOWNLOAD_LATEST-C51111?style=for-the-badge&logo=github&logoColor=white" alt="Download"/></a>
+<a href="https://github.com/artriy/Perfect-Crewlink/releases/latest"><img src="https://img.shields.io/badge/Download_latest-C51111?style=for-the-badge&logo=github&logoColor=white" alt="Download latest release"/></a>
 &nbsp;
-<a href="#build-from-source"><img src="https://img.shields.io/badge/-BUILD_FROM_SOURCE-24C8DB?style=for-the-badge&logo=rust&logoColor=white" alt="Build"/></a>
+<a href="CHANGELOG.md"><img src="https://img.shields.io/badge/Changelog-24C8DB?style=for-the-badge&logo=git&logoColor=white" alt="Changelog"/></a>
 &nbsp;
-<a href="CHANGELOG.md"><img src="https://img.shields.io/badge/-CHANGELOG-8b5cf6?style=for-the-badge&logo=git&logoColor=white" alt="Changelog"/></a>
-&nbsp;
-<a href="https://github.com/artriy/Perfect-Crewlink/stargazers"><img src="https://img.shields.io/github/stars/artriy/Perfect-Crewlink?style=for-the-badge&logo=github&logoColor=white&label=STARS&color=ffa502" alt="Stars"/></a>
-
-<br/>
-
-<!-- Tech stack badges -->
-<img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript"/>
-&nbsp;
-<img src="https://img.shields.io/badge/Vite-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite"/>
-&nbsp;
-<img src="https://img.shields.io/badge/Tauri-24C8DB?style=flat-square&logo=tauri&logoColor=white" alt="Tauri"/>
-&nbsp;
-<img src="https://img.shields.io/badge/Rust-000000?style=flat-square&logo=rust&logoColor=white" alt="Rust"/>
-&nbsp;
-<img src="https://img.shields.io/badge/React-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React"/>
-&nbsp;
-<img src="https://img.shields.io/badge/Windows-0078D4?style=flat-square&logo=windows11&logoColor=white" alt="Windows"/>
-&nbsp;
-<img src="https://img.shields.io/badge/Linux-FCC624?style=flat-square&logo=linux&logoColor=black" alt="Linux"/>
+<a href="#build-from-source"><img src="https://img.shields.io/badge/Build_from_source-111827?style=for-the-badge&logo=rust&logoColor=white" alt="Build from source"/></a>
 
 <br/><br/>
 
-<img src="static/images/logos/sizes/256-BCL-Logo-shadow.png" alt="Perfect Crewlink logo" width="140"/>
+<img src="static/images/logos/sizes/256-BCL-Logo-shadow.png" alt="Perfect Crewlink logo" width="120"/>
 
 </div>
 
 <img src="static/images/divider.svg" width="100%" alt="divider"/>
 
-## About
+## What is Perfect Crewlink?
 
-**Perfect Crewlink** is a full desktop fork of the BetterCrewLink lineage, rebuilt around **TypeScript + Vite**, **Tauri**, and **Rust**. It keeps the Among Us proximity chat experience people love, then upgrades the desktop client around it: faster startup, lower overhead, sharper window handling, cleaner overlays, stronger mod support, and better day-to-day quality.
+Perfect Crewlink is a modern desktop fork of the CrewLink / BetterCrewLink lineage.
+It keeps the familiar Among Us proximity chat flow, but upgrades the app around it:
+faster startup, stronger overlay behavior, cleaner lobby tools, better mod support,
+and a Rust-backed Tauri shell instead of the older Electron-style desktop stack.
 
-<img src="static/images/divider.svg" width="100%" alt="divider"/>
-
-## Why Perfect Crewlink
+## Highlights
 
 <table>
 <tr>
-<td width="33%" align="center" valign="top">
+<td width="33%" valign="top">
 
-### <img src="https://img.shields.io/badge/-MODERN_RUNTIME-C51111?style=for-the-badge" height="22" alt="runtime"/>
+### ⚡ Lean desktop app
 
-Full rewrite on **Tauri + Rust** instead of the older Electron-era stack. Faster startup, lower overhead, leaner memory footprint.
-
-</td>
-<td width="33%" align="center" valign="top">
-
-### <img src="https://img.shields.io/badge/-STABLE_OVERLAYS-24C8DB?style=for-the-badge" height="22" alt="overlays"/>
-
-Better attach logic, cleaner focus handling, proper alt-tab behavior, and fewer ghost overlay bugs during gameplay.
+Tauri + Rust shell with a Vite renderer for faster launch, lower overhead, and simpler packaging.
 
 </td>
-<td width="33%" align="center" valign="top">
+<td width="33%" valign="top">
 
-### <img src="https://img.shields.io/badge/-MOD_SUPPORT-2ed573?style=for-the-badge" height="22" alt="mods"/>
+### 🎯 Reliable overlays
 
-**AleLudu Mode** for resized meeting cards, expanded color palette sync for modded lobbies, and better meeting overlay placement.
+Game-attached overlay behavior, improved alt-tab handling, and meeting highlights backed by Rust-read game state.
+
+</td>
+<td width="33%" valign="top">
+
+### 🧩 Mod-friendly
+
+AleLudu meeting support, expanded color palette sync, and better handling for modded cosmetics and lobbies.
 
 </td>
 </tr>
 <tr>
-<td width="33%" align="center" valign="top">
+<td width="33%" valign="top">
 
-### <img src="https://img.shields.io/badge/-BCL_INTEROP-8b5cf6?style=for-the-badge" height="22" alt="interop"/>
+### 🔊 Better voice flow
 
-Improved BetterCrewLink peer compatibility with cleaner signaling across mixed lobbies. No more `TRYING` deadlocks.
-
-</td>
-<td width="33%" align="center" valign="top">
-
-### <img src="https://img.shields.io/badge/-STREAM_READY-ffa502?style=for-the-badge" height="22" alt="streaming"/>
-
-Privacy controls for lobby code visibility, persistent mute/deafen state, and overlay modes tailored for clean streaming.
+Compatible with BetterCrewLink peers, with improved reconnects, stale-stream detection, and persistent mute/deafen state.
 
 </td>
-<td width="33%" align="center" valign="top">
+<td width="33%" valign="top">
 
-### <img src="https://img.shields.io/badge/-BETTER_LOBBIES-f368e0?style=for-the-badge" height="22" alt="lobbies"/>
+### 🧭 Cleaner lobbies
 
-Direct lobby codes, region labels, instant copy, smart mod filtering, and code persistence when lobbies flip in-game.
+Direct lobby codes, region labels, quick copy, smart filtering, and code persistence when games move in and out of lobby state.
+
+</td>
+<td width="33%" valign="top">
+
+### 🎥 Stream-ready
+
+Overlay modes, lobby privacy options, compact layouts, and backgroundless positions for cleaner captures.
 
 </td>
 </tr>
@@ -105,130 +82,61 @@ Direct lobby codes, region labels, instant copy, smart mod filtering, and code p
 
 <img src="static/images/divider.svg" width="100%" alt="divider"/>
 
-## Feature Highlights
+## Download
 
-| Area | What Perfect Crewlink adds |
-|:--|:--|
-| <img src="https://img.shields.io/badge/Desktop_Runtime-C51111?style=flat-square" alt="runtime"/> | Modern TypeScript + Vite renderer running on a Rust-native Tauri shell |
-| <img src="https://img.shields.io/badge/Overlay-24C8DB?style=flat-square" alt="overlay"/> | Better window attach, cleaner focus behavior, more position options, top-center backgroundless mode, live settings updates |
-| <img src="https://img.shields.io/badge/Lobby_Browser-8b5cf6?style=flat-square" alt="lobby"/> | Direct code display, region under each code, instant one-click copy, smarter mod filtering, code persistence across lobby/in-game flips |
-| <img src="https://img.shields.io/badge/Mod_Support-2ed573?style=flat-square" alt="mods"/> | AleLudu compatibility, expanded palette sync for modded colors, cleaner overlay placement for large meetings |
-| <img src="https://img.shields.io/badge/Voice-ffa502?style=flat-square" alt="voice"/> | Better BetterCrewLink interop, more reliable peer negotiation, persistent mute/deafen preferences |
-| <img src="https://img.shields.io/badge/Customization-f368e0?style=flat-square" alt="custom"/> | Overlay visibility modes, always-show-talking-player mode, compact/background variants, privacy toggles, advanced audio/server settings |
-| <img src="https://img.shields.io/badge/Packaging-06b6d4?style=flat-square" alt="package"/> | Windows portable exe, Windows installer, Linux via source builds |
-
-<details>
-<summary><strong>Full capability list</strong></summary>
-
-<br/>
-
-- Full `Perfect Crewlink` branding across the repo, desktop app, installer, bundle ID, and release assets
-- Rewritten desktop stack using **TypeScript + Vite + Tauri + Rust**
-- Overlay fixes for taskbar disappearance, alt-tab behavior, and game-only visibility
-- Overlay options for:
-  - talking-only avatars by default
-  - optional always-show-all-players mode
-  - top center without background
-  - top center with background
-- Public lobby browser improvements:
-  - direct lobby code display
-  - region shown below each code
-  - instant copy button
-  - smarter incompatible-mod handling
-  - code retention when a tracked lobby moves from lobby state into in-game state
-- Better compatibility with BetterCrewLink users in the same room
-- AleLudu Mode for resized meeting cards
-- Persistent mic mute and speaker mute state between launches
-- Better handling for expanded / modded player colors so avatars stop collapsing to red
-
-</details>
-
-<img src="static/images/divider.svg" width="100%" alt="divider"/>
-
-## <img src="https://img.shields.io/badge/-DOWNLOAD-C51111?style=for-the-badge&logo=download&logoColor=white" height="28" alt="download"/>
-
-Grab the latest release straight from GitHub:
+Get the latest Windows installer or portable executable from:
 
 <div align="center">
 
-### [**Perfect Crewlink Releases &rarr;**](https://github.com/artriy/Perfect-Crewlink/releases/latest)
+### [Perfect Crewlink Releases →](https://github.com/artriy/Perfect-Crewlink/releases/latest)
 
 </div>
 
-<table>
-<tr>
-<td align="center" width="50%">
-
-<img src="https://img.shields.io/badge/Windows-Portable_+_Installer-0078D4?style=for-the-badge&logo=windows11&logoColor=white" alt="Windows"/>
-
-Download the portable `.exe` or the NSIS installer straight from the releases page. No extra setup required.
-
-</td>
-<td align="center" width="50%">
-
-<img src="https://img.shields.io/badge/Linux-Source_Build-FCC624?style=for-the-badge&logo=linux&logoColor=black" alt="Linux"/>
-
-Linux is fully supported through source builds on a Linux machine. See the guide below.
-
-</td>
-</tr>
-</table>
+**Windows:** prebuilt installer and portable `.exe` are available on each release.  
+**Linux:** build from source on a Linux machine using the steps below.
 
 <img src="static/images/divider.svg" width="100%" alt="divider"/>
 
-## Build From Source
+## Build from source
 
-> Prefer the pre-built releases if you just want to run the app. Build from source only if you want to develop, customize, or target Linux.
+### Requirements
 
-<details open>
-<summary><strong><img src="https://img.shields.io/badge/Windows-0078D4?style=flat-square&logo=windows11&logoColor=white"/> Windows quick start</strong></summary>
+- Node.js 20+
+- Rust stable toolchain
+- Tauri desktop dependencies
+- Windows: Visual Studio 2022 Build Tools + WebView2 Runtime
 
-<br/>
-
-**1. Install the required tools:**
-- Node.js 20 or newer
-- Rust stable toolchain from `rustup`
-- Visual Studio 2022 Build Tools with `Desktop development with C++`
-- Microsoft WebView2 Runtime
-
-**2. Clone and install dependencies:**
+### Quick start
 
 ```bash
 git clone https://github.com/artriy/Perfect-Crewlink.git
 cd Perfect-Crewlink
 npm ci
-```
-
-**3. Start the desktop app in development mode:**
-
-```bash
 npm run tauri -- dev
 ```
 
-**4. Build a production version:**
+### Production build
 
 ```bash
 npm run typecheck
 npm run tauri -- build
 ```
 
-**5. Find the Windows outputs here:**
-- `src-tauri/target/release/perfectcrewlink.exe`
-- `src-tauri/target/release/bundle/nsis/*.exe`
+Windows outputs:
 
-</details>
+```text
+src-tauri/target/release/perfectcrewlink.exe
+src-tauri/target/release/bundle/nsis/*.exe
+```
+
+Linux builds output bundles under:
+
+```text
+src-tauri/target/release/bundle/
+```
 
 <details>
-<summary><strong><img src="https://img.shields.io/badge/Linux-FCC624?style=flat-square&logo=linux&logoColor=black"/> Linux quick start</strong></summary>
-
-<br/>
-
-**1. Install the required tools:**
-- Node.js 20 or newer
-- Rust stable toolchain from `rustup`
-- Ubuntu 22.04 or newer
-
-**2. Install Tauri desktop dependencies:**
+<summary><strong>Linux dependency install example</strong></summary>
 
 ```bash
 sudo apt-get update
@@ -245,94 +153,40 @@ sudo apt-get install -y \
   patchelf
 ```
 
-**3. Clone and install dependencies:**
-
-```bash
-git clone https://github.com/artriy/Perfect-Crewlink.git
-cd Perfect-Crewlink
-npm ci
-```
-
-**4. Start the desktop app in development mode:**
-
-```bash
-npm run tauri -- dev
-```
-
-**5. Build a production version:**
-
-```bash
-npm run typecheck
-npm run tauri -- build
-```
-
-**6.** Tauri will generate the Linux bundle for the host machine in `src-tauri/target/release/bundle/`.
-
 </details>
 
 <img src="static/images/divider.svg" width="100%" alt="divider"/>
 
-## Architecture
+## Project layout
 
-<details open>
-<summary><strong>Repository layout</strong></summary>
-
-```
-src/
-  renderer/               # React UI, overlay UI, settings, lobby browser, voice client
-  common/                 # Shared desktop/game contracts, state types, IPC messages, utils
-
-src-tauri/                # Native windowing, process attach, overlay control, Among Us reader
-
-static/                   # Logos, avatar templates, translations, static assets
-scripts/                  # Build helpers and Tauri launcher helpers
+```text
+src/          React renderer, overlay UI, settings, lobby browser, voice client
+src-tauri/    Rust/Tauri shell, process reader, native overlay/window control
+static/       Images, translations, avatars, and bundled assets
+scripts/      Build helpers and Tauri launch wrappers
 ```
 
-</details>
-
-### Useful commands
+Useful commands:
 
 ```bash
-npm ci                    # Install dependencies
-npm run dev:web           # Run the web renderer
-npm run tauri -- dev      # Run the full desktop app in dev mode
-npm run typecheck         # Type-check the project
-npm run build             # Build the web renderer
-npm run tauri -- build    # Build the full desktop app
+npm run dev:web        # Run renderer only
+npm run tauri -- dev   # Run full desktop app
+npm run typecheck      # Type-check TypeScript
+npm run build          # Build renderer
+npm run tauri -- build # Build desktop app
 ```
 
 <img src="static/images/divider.svg" width="100%" alt="divider"/>
 
 ## Credits
 
-Perfect Crewlink stands on the shoulders of years of community work:
+Perfect Crewlink exists because of the community work behind:
 
-<table>
-<tr>
-<td align="center" width="50%">
+- [ottomated/CrewLink](https://github.com/ottomated/CrewLink)
+- [OhMyGuus/BetterCrewLink](https://github.com/OhMyGuus/BetterCrewLink)
 
-<img src="https://img.shields.io/badge/Original-CrewLink-6e40c9?style=for-the-badge" alt="crewlink"/>
-
-[**ottomated/CrewLink**](https://github.com/ottomated/CrewLink)
-
-The project that started it all.
-
-</td>
-<td align="center" width="50%">
-
-<img src="https://img.shields.io/badge/Lineage-BetterCrewLink-24C8DB?style=for-the-badge" alt="bcl"/>
-
-[**OhMyGuus/BetterCrewLink**](https://github.com/OhMyGuus/BetterCrewLink)
-
-The fork that kept the dream alive.
-
-</td>
-</tr>
-</table>
-
-Perfect Crewlink takes that lineage and pushes the desktop client forward with a modern rewrite, more reliable runtime behavior, and a cleaner release story.
-
-<img src="static/images/divider.svg" width="100%" alt="divider"/>
+This fork builds on that foundation with a modern desktop runtime, stronger overlays,
+and a cleaner release path.
 
 ## License
 
@@ -346,6 +200,6 @@ Distributed under the **GNU General Public License v3.0**. See [LICENSE](LICENSE
 
 <br/>
 
-<sub><strong>Perfect Crewlink</strong> &middot; Built for the crew</sub>
+<sub><strong>Perfect Crewlink</strong> · Built for the crew</sub>
 
 </div>
