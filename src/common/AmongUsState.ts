@@ -21,6 +21,26 @@ export interface AmongUsState {
 	maxPlayers: number;
 	mod: ModsType;
 	oldMeetingHud: boolean;
+	meetingHud?: MeetingHud | null;
+}
+
+export interface MeetingHud {
+	state: number;
+	source: string;
+	oldHud: boolean;
+	cards: MeetingHudCard[];
+}
+
+export interface MeetingHudCard {
+	slotIndex: number;
+	playerId: number;
+	clientId?: number | null;
+	visible: boolean;
+	worldX?: number | null;
+	worldY?: number | null;
+	worldZ?: number | null;
+	width?: number | null;
+	height?: number | null;
 }
 
 export interface Player {

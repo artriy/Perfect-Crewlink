@@ -60,6 +60,29 @@ pub enum SessionPhase {
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct MeetingHudCard {
+    pub slot_index: u32,
+    pub player_id: u32,
+    pub client_id: Option<u32>,
+    pub visible: bool,
+    pub world_x: Option<f32>,
+    pub world_y: Option<f32>,
+    pub world_z: Option<f32>,
+    pub width: Option<f32>,
+    pub height: Option<f32>,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MeetingHudSnapshot {
+    pub state: i32,
+    pub source: String,
+    pub old_hud: bool,
+    pub cards: Vec<MeetingHudCard>,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Player {
     pub ptr: u64,
     pub id: u32,
@@ -108,6 +131,7 @@ pub struct AmongUsState {
     #[serde(rename = "mod")]
     pub mod_name: String,
     pub old_meeting_hud: bool,
+    pub meeting_hud: Option<MeetingHudSnapshot>,
 }
 
 impl Default for AmongUsState {
@@ -132,6 +156,7 @@ impl Default for AmongUsState {
             max_players: 0,
             mod_name: "NONE".to_string(),
             old_meeting_hud: false,
+            meeting_hud: None,
         }
     }
 }
@@ -1158,6 +1183,7 @@ impl AmongUsReader {
             .as_ref()
             .map(|previous| previous.light_radius)
             .unwrap_or(0.0);
+        let meeting_hud_snapshot = self.read_meeting_hud(meeting_hud, meeting_hud_state, &players);
 
         let new_state = AmongUsState {
             game_state: if lobby_code == "MENU" {
@@ -1183,6 +1209,7 @@ impl AmongUsReader {
             max_players,
             mod_name: self.loaded_mod.to_string(),
             old_meeting_hud: self.old_meeting_hud,
+            meeting_hud: meeting_hud_snapshot,
         };
 
         let previous_state = snapshot.lock().unwrap().state.clone();
@@ -1224,6 +1251,40 @@ impl AmongUsReader {
 
         self.old_game_state = state;
         Ok(())
+    }
+
+    fn read_meeting_hud(
+        &self,
+        meeting_hud: u64,
+        meeting_hud_state: i32,
+        players: &[Player],
+    ) -> Option<MeetingHudSnapshot> {
+        if meeting_hud == 0 || meeting_hud_state >= 4 {
+            return None;
+        }
+
+        let cards = players
+            .iter()
+            .enumerate()
+            .map(|(slot_index, player)| MeetingHudCard {
+                slot_index: slot_index as u32,
+                player_id: player.id,
+                client_id: Some(player.client_id),
+                visible: !player.disconnected && !player.bugged && !player.is_dummy,
+                world_x: None,
+                world_y: None,
+                world_z: None,
+                width: None,
+                height: None,
+            })
+            .collect();
+
+        Some(MeetingHudSnapshot {
+            state: meeting_hud_state,
+            source: "player_list_fallback".to_string(),
+            old_hud: self.old_meeting_hud,
+            cards,
+        })
     }
 
     fn load_colors(&mut self, snapshot: &SharedSessionSnapshot) -> Result<(), String> {
