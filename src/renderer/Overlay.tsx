@@ -557,7 +557,7 @@ const Overlay: React.FC = function () {
 						voiceState={voiceState}
 						playerColors={playerColors}
 						aleLuduMode={settings.aleLuduMode}
-						tuning={settings.aleLuduTuning ?? DEFAULT_ALE_LUDU_TUNING}
+						tuning={DEFAULT_ALE_LUDU_TUNING}
 						meetingStartPlayers={lastTaskPlayersRef.current}
 					/>
 				)}

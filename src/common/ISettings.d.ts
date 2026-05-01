@@ -48,7 +48,6 @@ export interface ISettings {
 	launchPlatform: GamePlatform | string;
 	customPlatforms: GamePlatformMap;
 
-	aleLuduTuning: AleLuduTuning;
 }
 
 export interface AleLuduColumnTuning {
