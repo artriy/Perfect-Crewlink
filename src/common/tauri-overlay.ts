@@ -7,3 +7,7 @@ export async function setOverlayEnabled(enabled: boolean): Promise<void> {
 export async function openLobbyBrowser(): Promise<void> {
 	await invoke('open_lobby_browser');
 }
+
+export async function closeLobbyBrowser(): Promise<void> {
+	await invoke('close_lobby_browser');
+}

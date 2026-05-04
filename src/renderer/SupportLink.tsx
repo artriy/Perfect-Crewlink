@@ -13,7 +13,7 @@ const useStyles = makeStyles(() => ({
 		fontSize: 19,
 		outline: 'none',
 		fontWeight: 500,
-		fontFamily: '"Varela", sans-serif',
+		fontFamily: 'Segoe UI, system-ui, sans-serif',
 		marginTop: 24,
 		'&:hover': {
 			borderColor: '#00ff00',

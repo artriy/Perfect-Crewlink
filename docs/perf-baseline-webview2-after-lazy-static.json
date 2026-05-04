@@ -1,0 +1,1098 @@
+﻿{
+    "Scenario":  "final-idle",
+    "ProcessName":  "perfectcrewlink",
+    "LaunchPath":  "src-tauri/target/release/perfectcrewlink.exe",
+    "DurationSeconds":  15.17,
+    "LogicalProcessors":  12,
+    "Start":  {
+                  "Timestamp":  {
+                                    "value":  "\/Date(1777927754213)\/",
+                                    "DisplayHint":  2,
+                                    "DateTime":  "Monday, May 4, 2026 11:49:14 PM"
+                                },
+                  "RootPids":  [
+                                   1776
+                               ],
+                  "ProcessCount":  7,
+                  "WebView2Count":  6,
+                  "TotalWorkingSetMB":  324.41,
+                  "TotalPrivateMB":  179.36,
+                  "WebView2WorkingSetMB":  298.5,
+                  "WebView2PrivateMB":  172.79,
+                  "TotalCpuSeconds":  1.625,
+                  "Processes":  [
+                                    {
+                                        "Pid":  84,
+                                        "Name":  "msedgewebview2",
+                                        "WorkingSetMB":  32,
+                                        "PrivateMB":  13.09,
+                                        "CpuSeconds":  0.078
+                                    },
+                                    {
+                                        "Pid":  2744,
+                                        "Name":  "msedgewebview2",
+                                        "WorkingSetMB":  7.81,
+                                        "PrivateMB":  2.23,
+                                        "CpuSeconds":  0.016
+                                    },
+                                    {
+                                        "Pid":  2960,
+                                        "Name":  "msedgewebview2",
+                                        "WorkingSetMB":  66.86,
+                                        "PrivateMB":  70.38,
+                                        "CpuSeconds":  0.453
+                                    },
+                                    {
+                                        "Pid":  7320,
+                                        "Name":  "msedgewebview2",
+                                        "WorkingSetMB":  67.14,
+                                        "PrivateMB":  36.5,
+                                        "CpuSeconds":  0.328
+                                    },
+                                    {
+                                        "Pid":  7400,
+                                        "Name":  "msedgewebview2",
+                                        "WorkingSetMB":  106.46,
+                                        "PrivateMB":  41.25,
+                                        "CpuSeconds":  0.484
+                                    },
+                                    {
+                                        "Pid":  11124,
+                                        "Name":  "msedgewebview2",
+                                        "WorkingSetMB":  18.23,
+                                        "PrivateMB":  9.34,
+                                        "CpuSeconds":  0.062
+                                    },
+                                    {
+                                        "Pid":  1776,
+                                        "Name":  "perfectcrewlink",
+                                        "WorkingSetMB":  25.91,
+                                        "PrivateMB":  6.57,
+                                        "CpuSeconds":  0.203
+                                    }
+                                ]
+              },
+    "End":  {
+                "Timestamp":  {
+                                  "value":  "\/Date(1777927769379)\/",
+                                  "DisplayHint":  2,
+                                  "DateTime":  "Monday, May 4, 2026 11:49:29 PM"
+                              },
+                "RootPids":  [
+                                 1776
+                             ],
+                "ProcessCount":  7,
+                "WebView2Count":  6,
+                "TotalWorkingSetMB":  320,
+                "TotalPrivateMB":  174.14,
+                "WebView2WorkingSetMB":  294.09,
+                "WebView2PrivateMB":  167.57,
+                "TotalCpuSeconds":  1.719,
+                "Processes":  [
+                                  {
+                                      "Pid":  84,
+                                      "Name":  "msedgewebview2",
+                                      "WorkingSetMB":  32.29,
+                                      "PrivateMB":  13.26,
+                                      "CpuSeconds":  0.078
+                                  },
+                                  {
+                                      "Pid":  2744,
+                                      "Name":  "msedgewebview2",
+                                      "WorkingSetMB":  7.81,
+                                      "PrivateMB":  2.23,
+                                      "CpuSeconds":  0.016
+                                  },
+                                  {
+                                      "Pid":  2960,
+                                      "Name":  "msedgewebview2",
+                                      "WorkingSetMB":  66.34,
+                                      "PrivateMB":  69.7,
+                                      "CpuSeconds":  0.453
+                                  },
+                                  {
+                                      "Pid":  7320,
+                                      "Name":  "msedgewebview2",
+                                      "WorkingSetMB":  65.41,
+                                      "PrivateMB":  34.68,
+                                      "CpuSeconds":  0.359
+                                  },
+                                  {
+                                      "Pid":  7400,
+                                      "Name":  "msedgewebview2",
+                                      "WorkingSetMB":  104.14,
+                                      "PrivateMB":  38.54,
+                                      "CpuSeconds":  0.516
+                                  },
+                                  {
+                                      "Pid":  11124,
+                                      "Name":  "msedgewebview2",
+                                      "WorkingSetMB":  18.1,
+                                      "PrivateMB":  9.16,
+                                      "CpuSeconds":  0.062
+                                  },
+                                  {
+                                      "Pid":  1776,
+                                      "Name":  "perfectcrewlink",
+                                      "WorkingSetMB":  25.91,
+                                      "PrivateMB":  6.57,
+                                      "CpuSeconds":  0.234
+                                  }
+                              ]
+            },
+    "AverageCpuPercent":  0.052,
+    "Samples":  [
+                    {
+                        "Timestamp":  {
+                                          "value":  "\/Date(1777927755280)\/",
+                                          "DisplayHint":  2,
+                                          "DateTime":  "Monday, May 4, 2026 11:49:15 PM"
+                                      },
+                        "RootPids":  [
+                                         1776
+                                     ],
+                        "ProcessCount":  7,
+                        "WebView2Count":  6,
+                        "TotalWorkingSetMB":  324.66,
+                        "TotalPrivateMB":  179.61,
+                        "WebView2WorkingSetMB":  298.75,
+                        "WebView2PrivateMB":  173.04,
+                        "TotalCpuSeconds":  1.641,
+                        "Processes":  [
+                                          {
+                                              "Pid":  84,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  32.08,
+                                              "PrivateMB":  13.16,
+                                              "CpuSeconds":  0.078
+                                          },
+                                          {
+                                              "Pid":  2744,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  7.81,
+                                              "PrivateMB":  2.23,
+                                              "CpuSeconds":  0.016
+                                          },
+                                          {
+                                              "Pid":  2960,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  66.86,
+                                              "PrivateMB":  70.38,
+                                              "CpuSeconds":  0.453
+                                          },
+                                          {
+                                              "Pid":  7320,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  67.26,
+                                              "PrivateMB":  36.66,
+                                              "CpuSeconds":  0.328
+                                          },
+                                          {
+                                              "Pid":  7400,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  106.51,
+                                              "PrivateMB":  41.27,
+                                              "CpuSeconds":  0.5
+                                          },
+                                          {
+                                              "Pid":  11124,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  18.23,
+                                              "PrivateMB":  9.34,
+                                              "CpuSeconds":  0.062
+                                          },
+                                          {
+                                              "Pid":  1776,
+                                              "Name":  "perfectcrewlink",
+                                              "WorkingSetMB":  25.91,
+                                              "PrivateMB":  6.57,
+                                              "CpuSeconds":  0.203
+                                          }
+                                      ]
+                    },
+                    {
+                        "Timestamp":  {
+                                          "value":  "\/Date(1777927756542)\/",
+                                          "DisplayHint":  2,
+                                          "DateTime":  "Monday, May 4, 2026 11:49:16 PM"
+                                      },
+                        "RootPids":  [
+                                         1776
+                                     ],
+                        "ProcessCount":  7,
+                        "WebView2Count":  6,
+                        "TotalWorkingSetMB":  324.51,
+                        "TotalPrivateMB":  179.41,
+                        "WebView2WorkingSetMB":  298.6,
+                        "WebView2PrivateMB":  172.84,
+                        "TotalCpuSeconds":  1.641,
+                        "Processes":  [
+                                          {
+                                              "Pid":  84,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  32.11,
+                                              "PrivateMB":  13.19,
+                                              "CpuSeconds":  0.078
+                                          },
+                                          {
+                                              "Pid":  2744,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  7.81,
+                                              "PrivateMB":  2.23,
+                                              "CpuSeconds":  0.016
+                                          },
+                                          {
+                                              "Pid":  2960,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  66.61,
+                                              "PrivateMB":  70.13,
+                                              "CpuSeconds":  0.453
+                                          },
+                                          {
+                                              "Pid":  7320,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  67.33,
+                                              "PrivateMB":  36.69,
+                                              "CpuSeconds":  0.328
+                                          },
+                                          {
+                                              "Pid":  7400,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  106.51,
+                                              "PrivateMB":  41.27,
+                                              "CpuSeconds":  0.5
+                                          },
+                                          {
+                                              "Pid":  11124,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  18.23,
+                                              "PrivateMB":  9.34,
+                                              "CpuSeconds":  0.062
+                                          },
+                                          {
+                                              "Pid":  1776,
+                                              "Name":  "perfectcrewlink",
+                                              "WorkingSetMB":  25.91,
+                                              "PrivateMB":  6.57,
+                                              "CpuSeconds":  0.203
+                                          }
+                                      ]
+                    },
+                    {
+                        "Timestamp":  {
+                                          "value":  "\/Date(1777927757597)\/",
+                                          "DisplayHint":  2,
+                                          "DateTime":  "Monday, May 4, 2026 11:49:17 PM"
+                                      },
+                        "RootPids":  [
+                                         1776
+                                     ],
+                        "ProcessCount":  7,
+                        "WebView2Count":  6,
+                        "TotalWorkingSetMB":  321.58,
+                        "TotalPrivateMB":  176.17,
+                        "WebView2WorkingSetMB":  295.67,
+                        "WebView2PrivateMB":  169.6,
+                        "TotalCpuSeconds":  1.656,
+                        "Processes":  [
+                                          {
+                                              "Pid":  84,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  32.1,
+                                              "PrivateMB":  13.16,
+                                              "CpuSeconds":  0.078
+                                          },
+                                          {
+                                              "Pid":  2744,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  7.81,
+                                              "PrivateMB":  2.23,
+                                              "CpuSeconds":  0.016
+                                          },
+                                          {
+                                              "Pid":  2960,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  66.33,
+                                              "PrivateMB":  69.69,
+                                              "CpuSeconds":  0.453
+                                          },
+                                          {
+                                              "Pid":  7320,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  67.39,
+                                              "PrivateMB":  36.84,
+                                              "CpuSeconds":  0.328
+                                          },
+                                          {
+                                              "Pid":  7400,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  103.95,
+                                              "PrivateMB":  38.52,
+                                              "CpuSeconds":  0.5
+                                          },
+                                          {
+                                              "Pid":  11124,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  18.1,
+                                              "PrivateMB":  9.16,
+                                              "CpuSeconds":  0.062
+                                          },
+                                          {
+                                              "Pid":  1776,
+                                              "Name":  "perfectcrewlink",
+                                              "WorkingSetMB":  25.91,
+                                              "PrivateMB":  6.57,
+                                              "CpuSeconds":  0.219
+                                          }
+                                      ]
+                    },
+                    {
+                        "Timestamp":  {
+                                          "value":  "\/Date(1777927758652)\/",
+                                          "DisplayHint":  2,
+                                          "DateTime":  "Monday, May 4, 2026 11:49:18 PM"
+                                      },
+                        "RootPids":  [
+                                         1776
+                                     ],
+                        "ProcessCount":  7,
+                        "WebView2Count":  6,
+                        "TotalWorkingSetMB":  321.66,
+                        "TotalPrivateMB":  176.22,
+                        "WebView2WorkingSetMB":  295.75,
+                        "WebView2PrivateMB":  169.65,
+                        "TotalCpuSeconds":  1.656,
+                        "Processes":  [
+                                          {
+                                              "Pid":  84,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  32.13,
+                                              "PrivateMB":  13.18,
+                                              "CpuSeconds":  0.078
+                                          },
+                                          {
+                                              "Pid":  2744,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  7.81,
+                                              "PrivateMB":  2.23,
+                                              "CpuSeconds":  0.016
+                                          },
+                                          {
+                                              "Pid":  2960,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  66.33,
+                                              "PrivateMB":  69.69,
+                                              "CpuSeconds":  0.453
+                                          },
+                                          {
+                                              "Pid":  7320,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  67.43,
+                                              "PrivateMB":  36.86,
+                                              "CpuSeconds":  0.328
+                                          },
+                                          {
+                                              "Pid":  7400,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  103.95,
+                                              "PrivateMB":  38.52,
+                                              "CpuSeconds":  0.5
+                                          },
+                                          {
+                                              "Pid":  11124,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  18.1,
+                                              "PrivateMB":  9.16,
+                                              "CpuSeconds":  0.062
+                                          },
+                                          {
+                                              "Pid":  1776,
+                                              "Name":  "perfectcrewlink",
+                                              "WorkingSetMB":  25.91,
+                                              "PrivateMB":  6.57,
+                                              "CpuSeconds":  0.219
+                                          }
+                                      ]
+                    },
+                    {
+                        "Timestamp":  {
+                                          "value":  "\/Date(1777927759716)\/",
+                                          "DisplayHint":  2,
+                                          "DateTime":  "Monday, May 4, 2026 11:49:19 PM"
+                                      },
+                        "RootPids":  [
+                                         1776
+                                     ],
+                        "ProcessCount":  7,
+                        "WebView2Count":  6,
+                        "TotalWorkingSetMB":  319.36,
+                        "TotalPrivateMB":  173.55,
+                        "WebView2WorkingSetMB":  293.45,
+                        "WebView2PrivateMB":  166.98,
+                        "TotalCpuSeconds":  1.672,
+                        "Processes":  [
+                                          {
+                                              "Pid":  84,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  32.16,
+                                              "PrivateMB":  13.19,
+                                              "CpuSeconds":  0.078
+                                          },
+                                          {
+                                              "Pid":  2744,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  7.81,
+                                              "PrivateMB":  2.23,
+                                              "CpuSeconds":  0.016
+                                          },
+                                          {
+                                              "Pid":  2960,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  66.33,
+                                              "PrivateMB":  69.69,
+                                              "CpuSeconds":  0.453
+                                          },
+                                          {
+                                              "Pid":  7320,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  64.96,
+                                              "PrivateMB":  34.06,
+                                              "CpuSeconds":  0.328
+                                          },
+                                          {
+                                              "Pid":  7400,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  104.09,
+                                              "PrivateMB":  38.64,
+                                              "CpuSeconds":  0.516
+                                          },
+                                          {
+                                              "Pid":  11124,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  18.1,
+                                              "PrivateMB":  9.16,
+                                              "CpuSeconds":  0.062
+                                          },
+                                          {
+                                              "Pid":  1776,
+                                              "Name":  "perfectcrewlink",
+                                              "WorkingSetMB":  25.91,
+                                              "PrivateMB":  6.57,
+                                              "CpuSeconds":  0.219
+                                          }
+                                      ]
+                    },
+                    {
+                        "Timestamp":  {
+                                          "value":  "\/Date(1777927760872)\/",
+                                          "DisplayHint":  2,
+                                          "DateTime":  "Monday, May 4, 2026 11:49:20 PM"
+                                      },
+                        "RootPids":  [
+                                         1776
+                                     ],
+                        "ProcessCount":  7,
+                        "WebView2Count":  6,
+                        "TotalWorkingSetMB":  319.31,
+                        "TotalPrivateMB":  173.43,
+                        "WebView2WorkingSetMB":  293.4,
+                        "WebView2PrivateMB":  166.86,
+                        "TotalCpuSeconds":  1.672,
+                        "Processes":  [
+                                          {
+                                              "Pid":  84,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  32.21,
+                                              "PrivateMB":  13.21,
+                                              "CpuSeconds":  0.078
+                                          },
+                                          {
+                                              "Pid":  2744,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  7.81,
+                                              "PrivateMB":  2.23,
+                                              "CpuSeconds":  0.016
+                                          },
+                                          {
+                                              "Pid":  2960,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  66.33,
+                                              "PrivateMB":  69.69,
+                                              "CpuSeconds":  0.453
+                                          },
+                                          {
+                                              "Pid":  7320,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  65,
+                                              "PrivateMB":  34.07,
+                                              "CpuSeconds":  0.328
+                                          },
+                                          {
+                                              "Pid":  7400,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  103.95,
+                                              "PrivateMB":  38.5,
+                                              "CpuSeconds":  0.516
+                                          },
+                                          {
+                                              "Pid":  11124,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  18.1,
+                                              "PrivateMB":  9.16,
+                                              "CpuSeconds":  0.062
+                                          },
+                                          {
+                                              "Pid":  1776,
+                                              "Name":  "perfectcrewlink",
+                                              "WorkingSetMB":  25.91,
+                                              "PrivateMB":  6.57,
+                                              "CpuSeconds":  0.219
+                                          }
+                                      ]
+                    },
+                    {
+                        "Timestamp":  {
+                                          "value":  "\/Date(1777927761939)\/",
+                                          "DisplayHint":  2,
+                                          "DateTime":  "Monday, May 4, 2026 11:49:21 PM"
+                                      },
+                        "RootPids":  [
+                                         1776
+                                     ],
+                        "ProcessCount":  7,
+                        "WebView2Count":  6,
+                        "TotalWorkingSetMB":  319.38,
+                        "TotalPrivateMB":  173.46,
+                        "WebView2WorkingSetMB":  293.47,
+                        "WebView2PrivateMB":  166.89,
+                        "TotalCpuSeconds":  1.672,
+                        "Processes":  [
+                                          {
+                                              "Pid":  84,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  32.23,
+                                              "PrivateMB":  13.21,
+                                              "CpuSeconds":  0.078
+                                          },
+                                          {
+                                              "Pid":  2744,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  7.81,
+                                              "PrivateMB":  2.23,
+                                              "CpuSeconds":  0.016
+                                          },
+                                          {
+                                              "Pid":  2960,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  66.33,
+                                              "PrivateMB":  69.69,
+                                              "CpuSeconds":  0.453
+                                          },
+                                          {
+                                              "Pid":  7320,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  65.04,
+                                              "PrivateMB":  34.09,
+                                              "CpuSeconds":  0.328
+                                          },
+                                          {
+                                              "Pid":  7400,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  103.96,
+                                              "PrivateMB":  38.51,
+                                              "CpuSeconds":  0.516
+                                          },
+                                          {
+                                              "Pid":  11124,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  18.1,
+                                              "PrivateMB":  9.16,
+                                              "CpuSeconds":  0.062
+                                          },
+                                          {
+                                              "Pid":  1776,
+                                              "Name":  "perfectcrewlink",
+                                              "WorkingSetMB":  25.91,
+                                              "PrivateMB":  6.57,
+                                              "CpuSeconds":  0.219
+                                          }
+                                      ]
+                    },
+                    {
+                        "Timestamp":  {
+                                          "value":  "\/Date(1777927762997)\/",
+                                          "DisplayHint":  2,
+                                          "DateTime":  "Monday, May 4, 2026 11:49:22 PM"
+                                      },
+                        "RootPids":  [
+                                         1776
+                                     ],
+                        "ProcessCount":  7,
+                        "WebView2Count":  6,
+                        "TotalWorkingSetMB":  319.43,
+                        "TotalPrivateMB":  173.48,
+                        "WebView2WorkingSetMB":  293.52,
+                        "WebView2PrivateMB":  166.91,
+                        "TotalCpuSeconds":  1.719,
+                        "Processes":  [
+                                          {
+                                              "Pid":  84,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  32.23,
+                                              "PrivateMB":  13.22,
+                                              "CpuSeconds":  0.078
+                                          },
+                                          {
+                                              "Pid":  2744,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  7.81,
+                                              "PrivateMB":  2.23,
+                                              "CpuSeconds":  0.016
+                                          },
+                                          {
+                                              "Pid":  2960,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  66.33,
+                                              "PrivateMB":  69.69,
+                                              "CpuSeconds":  0.453
+                                          },
+                                          {
+                                              "Pid":  7320,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  65.08,
+                                              "PrivateMB":  34.1,
+                                              "CpuSeconds":  0.359
+                                          },
+                                          {
+                                              "Pid":  7400,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  103.97,
+                                              "PrivateMB":  38.51,
+                                              "CpuSeconds":  0.516
+                                          },
+                                          {
+                                              "Pid":  11124,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  18.1,
+                                              "PrivateMB":  9.16,
+                                              "CpuSeconds":  0.062
+                                          },
+                                          {
+                                              "Pid":  1776,
+                                              "Name":  "perfectcrewlink",
+                                              "WorkingSetMB":  25.91,
+                                              "PrivateMB":  6.57,
+                                              "CpuSeconds":  0.234
+                                          }
+                                      ]
+                    },
+                    {
+                        "Timestamp":  {
+                                          "value":  "\/Date(1777927764059)\/",
+                                          "DisplayHint":  2,
+                                          "DateTime":  "Monday, May 4, 2026 11:49:24 PM"
+                                      },
+                        "RootPids":  [
+                                         1776
+                                     ],
+                        "ProcessCount":  7,
+                        "WebView2Count":  6,
+                        "TotalWorkingSetMB":  319.46,
+                        "TotalPrivateMB":  173.5,
+                        "WebView2WorkingSetMB":  293.55,
+                        "WebView2PrivateMB":  166.93,
+                        "TotalCpuSeconds":  1.719,
+                        "Processes":  [
+                                          {
+                                              "Pid":  84,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  32.23,
+                                              "PrivateMB":  13.22,
+                                              "CpuSeconds":  0.078
+                                          },
+                                          {
+                                              "Pid":  2744,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  7.81,
+                                              "PrivateMB":  2.23,
+                                              "CpuSeconds":  0.016
+                                          },
+                                          {
+                                              "Pid":  2960,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  66.33,
+                                              "PrivateMB":  69.69,
+                                              "CpuSeconds":  0.453
+                                          },
+                                          {
+                                              "Pid":  7320,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  65.11,
+                                              "PrivateMB":  34.11,
+                                              "CpuSeconds":  0.359
+                                          },
+                                          {
+                                              "Pid":  7400,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  103.98,
+                                              "PrivateMB":  38.52,
+                                              "CpuSeconds":  0.516
+                                          },
+                                          {
+                                              "Pid":  11124,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  18.1,
+                                              "PrivateMB":  9.16,
+                                              "CpuSeconds":  0.062
+                                          },
+                                          {
+                                              "Pid":  1776,
+                                              "Name":  "perfectcrewlink",
+                                              "WorkingSetMB":  25.91,
+                                              "PrivateMB":  6.57,
+                                              "CpuSeconds":  0.234
+                                          }
+                                      ]
+                    },
+                    {
+                        "Timestamp":  {
+                                          "value":  "\/Date(1777927765124)\/",
+                                          "DisplayHint":  2,
+                                          "DateTime":  "Monday, May 4, 2026 11:49:25 PM"
+                                      },
+                        "RootPids":  [
+                                         1776
+                                     ],
+                        "ProcessCount":  7,
+                        "WebView2Count":  6,
+                        "TotalWorkingSetMB":  319.5,
+                        "TotalPrivateMB":  173.75,
+                        "WebView2WorkingSetMB":  293.59,
+                        "WebView2PrivateMB":  167.18,
+                        "TotalCpuSeconds":  1.719,
+                        "Processes":  [
+                                          {
+                                              "Pid":  84,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  32.23,
+                                              "PrivateMB":  13.21,
+                                              "CpuSeconds":  0.078
+                                          },
+                                          {
+                                              "Pid":  2744,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  7.81,
+                                              "PrivateMB":  2.23,
+                                              "CpuSeconds":  0.016
+                                          },
+                                          {
+                                              "Pid":  2960,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  66.33,
+                                              "PrivateMB":  69.69,
+                                              "CpuSeconds":  0.453
+                                          },
+                                          {
+                                              "Pid":  7320,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  65.16,
+                                              "PrivateMB":  34.37,
+                                              "CpuSeconds":  0.359
+                                          },
+                                          {
+                                              "Pid":  7400,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  103.97,
+                                              "PrivateMB":  38.51,
+                                              "CpuSeconds":  0.516
+                                          },
+                                          {
+                                              "Pid":  11124,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  18.1,
+                                              "PrivateMB":  9.16,
+                                              "CpuSeconds":  0.062
+                                          },
+                                          {
+                                              "Pid":  1776,
+                                              "Name":  "perfectcrewlink",
+                                              "WorkingSetMB":  25.91,
+                                              "PrivateMB":  6.57,
+                                              "CpuSeconds":  0.234
+                                          }
+                                      ]
+                    },
+                    {
+                        "Timestamp":  {
+                                          "value":  "\/Date(1777927766191)\/",
+                                          "DisplayHint":  2,
+                                          "DateTime":  "Monday, May 4, 2026 11:49:26 PM"
+                                      },
+                        "RootPids":  [
+                                         1776
+                                     ],
+                        "ProcessCount":  7,
+                        "WebView2Count":  6,
+                        "TotalWorkingSetMB":  319.61,
+                        "TotalPrivateMB":  173.93,
+                        "WebView2WorkingSetMB":  293.7,
+                        "WebView2PrivateMB":  167.36,
+                        "TotalCpuSeconds":  1.719,
+                        "Processes":  [
+                                          {
+                                              "Pid":  84,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  32.27,
+                                              "PrivateMB":  13.25,
+                                              "CpuSeconds":  0.078
+                                          },
+                                          {
+                                              "Pid":  2744,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  7.81,
+                                              "PrivateMB":  2.23,
+                                              "CpuSeconds":  0.016
+                                          },
+                                          {
+                                              "Pid":  2960,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  66.33,
+                                              "PrivateMB":  69.69,
+                                              "CpuSeconds":  0.453
+                                          },
+                                          {
+                                              "Pid":  7320,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  65.21,
+                                              "PrivateMB":  34.51,
+                                              "CpuSeconds":  0.359
+                                          },
+                                          {
+                                              "Pid":  7400,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  103.98,
+                                              "PrivateMB":  38.52,
+                                              "CpuSeconds":  0.516
+                                          },
+                                          {
+                                              "Pid":  11124,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  18.1,
+                                              "PrivateMB":  9.16,
+                                              "CpuSeconds":  0.062
+                                          },
+                                          {
+                                              "Pid":  1776,
+                                              "Name":  "perfectcrewlink",
+                                              "WorkingSetMB":  25.91,
+                                              "PrivateMB":  6.57,
+                                              "CpuSeconds":  0.234
+                                          }
+                                      ]
+                    },
+                    {
+                        "Timestamp":  {
+                                          "value":  "\/Date(1777927767251)\/",
+                                          "DisplayHint":  2,
+                                          "DateTime":  "Monday, May 4, 2026 11:49:27 PM"
+                                      },
+                        "RootPids":  [
+                                         1776
+                                     ],
+                        "ProcessCount":  7,
+                        "WebView2Count":  6,
+                        "TotalWorkingSetMB":  319.79,
+                        "TotalPrivateMB":  174.09,
+                        "WebView2WorkingSetMB":  293.88,
+                        "WebView2PrivateMB":  167.52,
+                        "TotalCpuSeconds":  1.719,
+                        "Processes":  [
+                                          {
+                                              "Pid":  84,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  32.29,
+                                              "PrivateMB":  13.26,
+                                              "CpuSeconds":  0.078
+                                          },
+                                          {
+                                              "Pid":  2744,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  7.81,
+                                              "PrivateMB":  2.23,
+                                              "CpuSeconds":  0.016
+                                          },
+                                          {
+                                              "Pid":  2960,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  66.33,
+                                              "PrivateMB":  69.69,
+                                              "CpuSeconds":  0.453
+                                          },
+                                          {
+                                              "Pid":  7320,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  65.32,
+                                              "PrivateMB":  34.65,
+                                              "CpuSeconds":  0.359
+                                          },
+                                          {
+                                              "Pid":  7400,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  104.04,
+                                              "PrivateMB":  38.52,
+                                              "CpuSeconds":  0.516
+                                          },
+                                          {
+                                              "Pid":  11124,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  18.1,
+                                              "PrivateMB":  9.16,
+                                              "CpuSeconds":  0.062
+                                          },
+                                          {
+                                              "Pid":  1776,
+                                              "Name":  "perfectcrewlink",
+                                              "WorkingSetMB":  25.91,
+                                              "PrivateMB":  6.57,
+                                              "CpuSeconds":  0.234
+                                          }
+                                      ]
+                    },
+                    {
+                        "Timestamp":  {
+                                          "value":  "\/Date(1777927768315)\/",
+                                          "DisplayHint":  2,
+                                          "DateTime":  "Monday, May 4, 2026 11:49:28 PM"
+                                      },
+                        "RootPids":  [
+                                         1776
+                                     ],
+                        "ProcessCount":  7,
+                        "WebView2Count":  6,
+                        "TotalWorkingSetMB":  320,
+                        "TotalPrivateMB":  174.19,
+                        "WebView2WorkingSetMB":  294.09,
+                        "WebView2PrivateMB":  167.62,
+                        "TotalCpuSeconds":  1.719,
+                        "Processes":  [
+                                          {
+                                              "Pid":  84,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  32.29,
+                                              "PrivateMB":  13.26,
+                                              "CpuSeconds":  0.078
+                                          },
+                                          {
+                                              "Pid":  2744,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  7.81,
+                                              "PrivateMB":  2.23,
+                                              "CpuSeconds":  0.016
+                                          },
+                                          {
+                                              "Pid":  2960,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  66.33,
+                                              "PrivateMB":  69.69,
+                                              "CpuSeconds":  0.453
+                                          },
+                                          {
+                                              "Pid":  7320,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  65.37,
+                                              "PrivateMB":  34.67,
+                                              "CpuSeconds":  0.359
+                                          },
+                                          {
+                                              "Pid":  7400,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  104.2,
+                                              "PrivateMB":  38.6,
+                                              "CpuSeconds":  0.516
+                                          },
+                                          {
+                                              "Pid":  11124,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  18.1,
+                                              "PrivateMB":  9.16,
+                                              "CpuSeconds":  0.062
+                                          },
+                                          {
+                                              "Pid":  1776,
+                                              "Name":  "perfectcrewlink",
+                                              "WorkingSetMB":  25.91,
+                                              "PrivateMB":  6.57,
+                                              "CpuSeconds":  0.234
+                                          }
+                                      ]
+                    },
+                    {
+                        "Timestamp":  {
+                                          "value":  "\/Date(1777927769379)\/",
+                                          "DisplayHint":  2,
+                                          "DateTime":  "Monday, May 4, 2026 11:49:29 PM"
+                                      },
+                        "RootPids":  [
+                                         1776
+                                     ],
+                        "ProcessCount":  7,
+                        "WebView2Count":  6,
+                        "TotalWorkingSetMB":  320,
+                        "TotalPrivateMB":  174.14,
+                        "WebView2WorkingSetMB":  294.09,
+                        "WebView2PrivateMB":  167.57,
+                        "TotalCpuSeconds":  1.719,
+                        "Processes":  [
+                                          {
+                                              "Pid":  84,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  32.29,
+                                              "PrivateMB":  13.26,
+                                              "CpuSeconds":  0.078
+                                          },
+                                          {
+                                              "Pid":  2744,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  7.81,
+                                              "PrivateMB":  2.23,
+                                              "CpuSeconds":  0.016
+                                          },
+                                          {
+                                              "Pid":  2960,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  66.34,
+                                              "PrivateMB":  69.7,
+                                              "CpuSeconds":  0.453
+                                          },
+                                          {
+                                              "Pid":  7320,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  65.41,
+                                              "PrivateMB":  34.68,
+                                              "CpuSeconds":  0.359
+                                          },
+                                          {
+                                              "Pid":  7400,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  104.14,
+                                              "PrivateMB":  38.54,
+                                              "CpuSeconds":  0.516
+                                          },
+                                          {
+                                              "Pid":  11124,
+                                              "Name":  "msedgewebview2",
+                                              "WorkingSetMB":  18.1,
+                                              "PrivateMB":  9.16,
+                                              "CpuSeconds":  0.062
+                                          },
+                                          {
+                                              "Pid":  1776,
+                                              "Name":  "perfectcrewlink",
+                                              "WorkingSetMB":  25.91,
+                                              "PrivateMB":  6.57,
+                                              "CpuSeconds":  0.234
+                                          }
+                                      ]
+                    }
+                ]
+}

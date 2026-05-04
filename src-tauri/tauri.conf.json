@@ -1,78 +1,83 @@
 {
-  "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Perfect Crewlink",
-  "version": "1.0.6",
-  "identifier": "io.github.artriy.perfectcrewlink",
-  "build": {
-    "beforeDevCommand": "npm run dev:web",
-    "beforeBuildCommand": "npm run build",
-    "frontendDist": "../dist",
-    "devUrl": "http://localhost:5173"
-  },
-  "app": {
-    "windows": [
-      {
-        "title": "Perfect Crewlink",
-        "label": "main",
-        "width": 250,
-        "height": 350,
-        "minWidth": 250,
-        "minHeight": 350,
-        "maxWidth": 250,
-        "maxHeight": 350,
-        "resizable": false,
-        "decorations": false,
-        "visible": false
-      },
-      {
-        "title": "Perfect Crewlink Browser",
-        "label": "lobbies",
-        "width": 900,
-        "height": 500,
-        "minWidth": 250,
-        "minHeight": 350,
-        "resizable": true,
-        "decorations": false,
-        "visible": false
-      },
-      {
-        "title": "Perfect Crewlink Overlay",
-        "label": "overlay",
-        "width": 400,
-        "height": 300,
-        "transparent": true,
-        "decorations": false,
-        "shadow": false,
-        "alwaysOnTop": false,
-        "skipTaskbar": true,
-        "resizable": false,
-        "visible": false,
-        "focus": false
-      }
-    ],
-    "security": {
-      "csp": null
-    }
-  },
-  "bundle": {
-    "active": true,
-    "targets": ["nsis", "appimage"],
-    "linux": {
-      "appimage": {
-        "bundleMediaFramework": true
-      }
-    },
-    "windows": {
-      "nsis": {
-        "installerIcon": "icons/icon.ico",
-        "headerImage": "installer/perfect-header.bmp",
-        "sidebarImage": "installer/perfect-sidebar.bmp",
-        "startMenuFolder": "Perfect Crewlink"
-      }
-    },
-    "icon": [
-      "icons/icon.ico",
-      "icons/icon.png"
-    ]
-  }
+	"$schema": "https://schema.tauri.app/config/2",
+	"productName": "Perfect Crewlink",
+	"version": "1.0.7",
+	"identifier": "io.github.artriy.perfectcrewlink",
+	"build": {
+		"beforeDevCommand": "npm run dev:web",
+		"beforeBuildCommand": "npm run build",
+		"frontendDist": "../dist",
+		"devUrl": "http://localhost:5173"
+	},
+	"app": {
+		"windows": [
+			{
+				"title": "Perfect Crewlink",
+				"label": "main",
+				"width": 250,
+				"height": 350,
+				"minWidth": 250,
+				"minHeight": 350,
+				"maxWidth": 250,
+				"maxHeight": 350,
+				"resizable": false,
+				"decorations": false,
+				"dragDropEnabled": false,
+				"zoomHotkeysEnabled": false,
+				"visible": true
+			},
+			{
+				"title": "Perfect Crewlink Browser",
+				"label": "lobbies",
+				"create": false,
+				"width": 900,
+				"height": 500,
+				"minWidth": 250,
+				"minHeight": 350,
+				"resizable": true,
+				"decorations": false,
+				"dragDropEnabled": false,
+				"zoomHotkeysEnabled": false,
+				"visible": false
+			},
+			{
+				"title": "Perfect Crewlink Overlay",
+				"label": "overlay",
+				"create": false,
+				"width": 400,
+				"height": 300,
+				"transparent": true,
+				"decorations": false,
+				"shadow": false,
+				"alwaysOnTop": false,
+				"skipTaskbar": true,
+				"resizable": false,
+				"dragDropEnabled": false,
+				"zoomHotkeysEnabled": false,
+				"visible": false,
+				"focus": false
+			}
+		],
+		"security": {
+			"csp": null
+		}
+	},
+	"bundle": {
+		"active": true,
+		"targets": ["nsis", "appimage"],
+		"linux": {
+			"appimage": {
+				"bundleMediaFramework": true
+			}
+		},
+		"windows": {
+			"nsis": {
+				"installerIcon": "icons/icon.ico",
+				"headerImage": "installer/perfect-header.bmp",
+				"sidebarImage": "installer/perfect-sidebar.bmp",
+				"startMenuFolder": "Perfect Crewlink"
+			}
+		},
+		"icon": ["icons/icon.ico", "icons/icon.png"]
+	}
 }

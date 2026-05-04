@@ -74,7 +74,7 @@ const useStyles = makeStyles({
 		gap: '4px',
 	},
 	codeText: {
-		fontFamily: '"Source Code Pro", monospace',
+		fontFamily: 'ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace',
 		fontSize: '18px',
 		fontWeight: 700,
 		letterSpacing: '0.08em',

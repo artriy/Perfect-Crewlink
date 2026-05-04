@@ -38,8 +38,6 @@ import { bridge } from './bridge';
 import theme from './theme';
 import './css/index.css';
 import './language/i18n';
-import 'source-code-pro/source-code-pro.css';
-import 'typeface-varela/index.css';
 
 const Voice = lazy(() => import('./Voice'));
 const Settings = lazy(() => import('./settings/Settings'));

@@ -1,6 +1,6 @@
 {
   "name": "perfect-crewlink",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "private": true,
   "license": "GPL-3.0-or-later",
   "description": "Perfect Crewlink desktop client rewritten with TypeScript, Tauri, and Rust",
@@ -32,7 +32,8 @@
     "dist:halo": "npm run tauri -- build -c src-tauri/tauri.halo.conf.json && node scripts/postbuild-halo.mjs && npm run dist:restore-main-binary",
     "typecheck": "tsc --noEmit",
     "typecheck:halo": "tsc --noEmit -p tsconfig.halo.json",
-    "lint": "eslint src --ext .ts,.tsx"
+    "lint": "eslint src --ext .ts,.tsx",
+    "perf:webview2:idle": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/measure-webview2.ps1 -LaunchPath src-tauri/target/release/perfectcrewlink.exe -WarmupSeconds 5 -DurationSeconds 60 -IntervalMs 1000 -ScenarioName idle -StopAfter"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -53,8 +54,6 @@
     "react-i18next": "^15.5.1",
     "simple-peer": "https://codeload.github.com/vrnagy/simple-peer/tar.gz/35fcb6b25dd15c1e11ff32d522cf7b8016714bc3",
     "socket.io-client": "^2.4.0",
-    "source-code-pro": "^2.38.0",
-    "typeface-varela": "^1.1.13",
     "webrtc-adapter": "^9.0.3"
   },
   "devDependencies": {

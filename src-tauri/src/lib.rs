@@ -11,7 +11,10 @@ use std::sync::{
     Arc,
 };
 use std::time::Duration;
-use tauri::{AppHandle, Emitter, Manager, PhysicalSize, State, UserAttentionType, WebviewWindow, WindowEvent};
+use tauri::{
+    AppHandle, Emitter, Manager, PhysicalSize, State, UserAttentionType, WebviewWindow,
+    WebviewWindowBuilder, WindowEvent,
+};
 
 const OFFSETS_BASE_URL: &str = "https://raw.githubusercontent.com/OhMyGuus/BetterCrewlink-Offsets/main";
 const OFFSETS_FALLBACK_URL: &str = "https://cdn.jsdelivr.net/gh/OhMyGuus/BetterCrewlink-Offsets@main";
@@ -286,7 +289,7 @@ fn reset_hotkeys(
 }
 
 #[tauri::command]
-fn set_overlay_enabled(
+async fn set_overlay_enabled(
     app: AppHandle,
     overlay_controller: State<'_, OverlayController>,
     enabled: bool,
@@ -295,13 +298,38 @@ fn set_overlay_enabled(
     refresh_overlay_window(&app, enabled)
 }
 
+fn create_webview_window_from_config(app: &AppHandle, label: &str) -> Result<WebviewWindow, String> {
+    let config = app
+        .config()
+        .app
+        .windows
+        .iter()
+        .find(|window| window.label == label)
+        .ok_or_else(|| format!("Window config not found: {label}"))?;
+
+    WebviewWindowBuilder::from_config(app, config)
+        .map_err(|error| error.to_string())?
+        .build()
+        .map_err(|error| error.to_string())
+}
+
+fn create_lobby_window(app: &AppHandle) -> Result<WebviewWindow, String> {
+    create_webview_window_from_config(app, "lobbies")
+}
+
 #[tauri::command]
-fn open_lobby_browser(app: AppHandle) -> Result<(), String> {
-    let window = app
-        .get_webview_window("lobbies")
-        .ok_or_else(|| "Window not found: lobbies".to_string())?;
+async fn open_lobby_browser(app: AppHandle) -> Result<(), String> {
+    let window = match app.get_webview_window("lobbies") {
+        Some(window) => window,
+        None => create_lobby_window(&app)?,
+    };
     window.show().map_err(|error| error.to_string())?;
     window.set_focus().map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn close_lobby_browser(app: AppHandle) -> Result<(), String> {
+    destroy_window_if_exists(&app, "lobbies")
 }
 
 #[tauri::command]
@@ -390,6 +418,13 @@ fn set_always_on_top(app: AppHandle, enabled: bool) -> Result<(), String> {
         .get_webview_window("main")
         .ok_or_else(|| "Window not found: main".to_string())?;
     window.set_always_on_top(enabled).map_err(|error| error.to_string())
+}
+
+fn destroy_window_if_exists(app: &AppHandle, label: &str) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window(label) {
+        window.destroy().map_err(|error| error.to_string())?;
+    }
+    Ok(())
 }
 
 fn configure_overlay_window(window: &WebviewWindow) -> Result<(), String> {
@@ -560,43 +595,55 @@ fn detach_overlay_window(window: &WebviewWindow) -> Result<(), String> {
     set_overlay_child_styles(window, None, None)
 }
 
-fn hide_overlay_window(window: &WebviewWindow) -> Result<(), String> {
-    let hide_result = window.hide().map_err(|error| error.to_string());
-    #[cfg(windows)]
-    {
-        let _ = detach_overlay_window(window);
+fn create_overlay_window(app: &AppHandle) -> Result<WebviewWindow, String> {
+    let window = create_webview_window_from_config(app, "overlay")?;
+    configure_overlay_window(&window)?;
+    Ok(window)
+}
+
+fn destroy_overlay_window(app: &AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("overlay") {
+        #[cfg(windows)]
+        {
+            let _ = detach_overlay_window(&window);
+        }
+        window.destroy().map_err(|error| error.to_string())?;
     }
-    hide_result
+    Ok(())
 }
 
 fn refresh_overlay_window(app: &AppHandle, enabled: bool) -> Result<(), String> {
-    let window = app
-        .get_webview_window("overlay")
-        .ok_or_else(|| "Window not found: overlay".to_string())?;
-
     if !enabled {
-        return hide_overlay_window(&window);
+        return destroy_overlay_window(app);
     }
-
-    configure_overlay_window(&window)?;
 
     #[cfg(windows)]
     {
         let Some(state) = find_among_us_window_state() else {
-            return hide_overlay_window(&window);
+            return destroy_overlay_window(app);
         };
 
         if state.is_minimized {
-            return hide_overlay_window(&window);
+            return destroy_overlay_window(app);
         }
 
+        let window = match app.get_webview_window("overlay") {
+            Some(window) => window,
+            None => create_overlay_window(app)?,
+        };
+        configure_overlay_window(&window)?;
         let _ = window.set_fullscreen(false);
         embed_overlay_window(&window, state)?;
-        return window.show().map_err(|error| error.to_string());
+        window.show().map_err(|error| error.to_string())
     }
 
     #[cfg(not(windows))]
     {
+        let window = match app.get_webview_window("overlay") {
+            Some(window) => window,
+            None => create_overlay_window(app)?,
+        };
+        configure_overlay_window(&window)?;
         sync_overlay_bounds(&window)?;
         window.show().map_err(|error| error.to_string())
     }
@@ -615,23 +662,22 @@ pub fn run() {
         .manage(hotkey_manager)
         .manage(overlay_controller)
         .setup(move |app| {
-            if let Some(window) = app.get_webview_window("overlay") {
-                let _ = configure_overlay_window(&window);
-                let _ = window.hide();
-            }
-            if let Some(window) = app.get_webview_window("lobbies") {
-                let _ = window.hide();
-            }
-
             check_for_app_updates(app.handle().clone());
 
             let app_handle = app.handle().clone();
             let overlay_controller_runtime = overlay_controller_runtime.clone();
             std::thread::spawn(move || loop {
-                if overlay_controller_runtime.enabled.load(Ordering::Relaxed) {
+                let delay_ms = if overlay_controller_runtime.enabled.load(Ordering::Relaxed) {
                     let _ = refresh_overlay_window(&app_handle, true);
-                }
-                std::thread::sleep(Duration::from_millis(250));
+                    if app_handle.get_webview_window("overlay").is_some() {
+                        250
+                    } else {
+                        1000
+                    }
+                } else {
+                    1000
+                };
+                std::thread::sleep(Duration::from_millis(delay_ms));
             });
 
             Ok(())
@@ -639,9 +685,9 @@ pub fn run() {
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
                 match window.label() {
-                    "overlay" | "lobbies" => {
+                    "overlay" => {
                         api.prevent_close();
-                        let _ = window.hide();
+                        let _ = destroy_overlay_window(window.app_handle());
                     }
                     "main" => {
                         api.prevent_close();
@@ -683,6 +729,7 @@ pub fn run() {
             reset_hotkeys,
             set_overlay_enabled,
             open_lobby_browser,
+            close_lobby_browser,
             launch_among_us_game,
             quit_app,
             relaunch_app,

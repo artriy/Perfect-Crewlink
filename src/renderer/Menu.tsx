@@ -1,7 +1,6 @@
 import React from 'react';
 import Footer from './Footer';
 import makeStyles from '@mui/styles/makeStyles';
-import CircularProgress from '@mui/material/CircularProgress';
 import Typography from '@mui/material/Typography';
 import SupportLink from './SupportLink';
 import LaunchButton from './LaunchButton';
@@ -28,6 +27,13 @@ const useStyles = makeStyles((theme) => ({
 		fontSize: 20,
 		marginTop: 12,
 		marginBottom: 12,
+	},
+	statusDot: {
+		width: 40,
+		height: 40,
+		borderRadius: '50%',
+		border: `4px solid ${theme.palette.primary.main}`,
+		boxSizing: 'border-box',
 	},
 	open_message: {
 		fontSize: 24,
@@ -60,7 +66,7 @@ const Menu: React.FC<MenuProps> = function ({ t, error }: MenuProps) {
 				) : (
 					<>
 						<span className={classes.waiting}>{t('game.waiting')}</span>
-						<CircularProgress color="primary" size={40} />
+						<span className={classes.statusDot} />
 						<span className={classes.open_message}>{t('game.open')}</span>
 						<LaunchButton t={t} />
 					</>

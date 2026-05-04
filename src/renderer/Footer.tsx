@@ -19,7 +19,7 @@ const useStyles = makeStyles(() => ({
 	},
 	version: {
 		color: 'rgba(255, 255, 255, 0.6)',
-		fontFamily: '"Source Code Pro", monospace',
+		fontFamily: 'ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace',
 		fontSize: 12,
 		letterSpacing: 0.8,
 	},

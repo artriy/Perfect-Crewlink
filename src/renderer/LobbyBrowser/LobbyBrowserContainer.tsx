@@ -8,8 +8,6 @@ import CloseIcon from '@mui/icons-material/Close';
 import MinimizeIcon from '@mui/icons-material/Minimize';
 import IconButton from '@mui/material/IconButton';
 import '../css/index.css';
-import 'source-code-pro/source-code-pro.css';
-import 'typeface-varela/index.css';
 import '../language/i18n';
 import theme from '../theme';
 import LobbyBrowser from './LobbyBrowser';

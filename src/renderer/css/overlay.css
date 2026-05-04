@@ -8,7 +8,7 @@ body,
 	overflow: hidden;
 	background: transparent;
 	color: white;
-	font-family: 'Varela', sans-serif;
+	font-family: Segoe UI, system-ui, sans-serif;
 }
 
 .overlay-wrapper {

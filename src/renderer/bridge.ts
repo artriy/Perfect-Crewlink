@@ -4,7 +4,7 @@ import { getHostPlatform, getMigrationStatus } from '../common/tauri-api';
 import { startGameSession, getInitialGameState, getCurrentMod } from '../common/tauri-game';
 import { resetHotkeys } from '../common/tauri-hotkeys';
 import { launchAmongUs } from '../common/tauri-launcher';
-import { openLobbyBrowser, setOverlayEnabled } from '../common/tauri-overlay';
+import { closeLobbyBrowser, openLobbyBrowser, setOverlayEnabled } from '../common/tauri-overlay';
 import { getSystemLocale, triggerAppUpdate } from '../common/tauri-system';
 import {
 	hideWindow,
@@ -33,15 +33,17 @@ function getCurrentWindowLabel(): WindowLabel {
 		return 'unknown';
 	}
 
-	const label = (window as typeof window & {
-		__TAURI_INTERNALS__?: {
-			metadata?: {
-				currentWindow?: {
-					label?: string;
+	const label = (
+		window as typeof window & {
+			__TAURI_INTERNALS__?: {
+				metadata?: {
+					currentWindow?: {
+						label?: string;
+					};
 				};
 			};
-		};
-	}).__TAURI_INTERNALS__?.metadata?.currentWindow?.label;
+		}
+	).__TAURI_INTERNALS__?.metadata?.currentWindow?.label;
 
 	if (label === 'main' || label === 'overlay' || label === 'lobbies') {
 		return label;
@@ -95,7 +97,11 @@ export const bridge = {
 		}
 		if (event === 'hideWindow') {
 			const [isLobbyBrowser] = args;
-			void hideWindow(isLobbyBrowser ? 'lobbies' : 'main');
+			if (isLobbyBrowser) {
+				void closeLobbyBrowser();
+				return;
+			}
+			void hideWindow('main');
 			return;
 		}
 		if (event === 'showWindow') {
@@ -196,7 +202,9 @@ export const bridge = {
 	},
 	sendSync(event: string) {
 		if (event === 'GET_INITIAL_STATE') {
-			return nativeEventState.get('NOTIFY_GAME_STATE_CHANGED') ?? overlayEventState.get('NOTIFY_GAME_STATE_CHANGED') ?? null;
+			return (
+				nativeEventState.get('NOTIFY_GAME_STATE_CHANGED') ?? overlayEventState.get('NOTIFY_GAME_STATE_CHANGED') ?? null
+			);
 		}
 		return null;
 	},
